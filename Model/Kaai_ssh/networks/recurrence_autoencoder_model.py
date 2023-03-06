@@ -40,29 +40,27 @@ class recurrence_autoencoder(nn.Module):
 
         # 2 * 128 -> 4 * 64 -> 8 * 32 -> 16 * 16 -> 16 * 9
         self.decoder = nn.Sequential(
-            # input = 2 * 2 * 128
+            # inputs = (Batch, 128, 2, 2)
             nn.Conv2d(128, 64, 3, padding = 'same'),
             nn.ReLU(),
-            nn.MaxUnpool2d(),
+            nn.Upsample(scale_factor = 2, mode = 'bilinear'),
             # result = 4 * 4 * 64
 
-            # input = 2 * 2 * 128
+            # input = 4 * 4 * 64
             nn.Conv2d(64, 32, 3, padding = 'same'),
             nn.ReLU(),
-            nn.MaxUnpool2d(),
+            nn.Upsample(scale_factor = 2, mode = 'bilinear'),
             # result = 8 * 8 * 32
 
             # input = 8 * 8 * 32
             nn.Conv2d(32, 16, 3, padding = 'same'),
             nn.ReLU(),
-            nn.MaxUnpool2d(),
+            nn.Upsample(scale_factor = 2, mode = 'bilinear'),
             # result = 16 * 16 * 16
 
             # input = 16 * 16 * 16
             nn.Conv2d(16, 9, 3, padding = 'same', ),
-            nn.ReLU()
-            # result = 4 * 4 * 64
-
+            nn.ReLU()   
         )
 
     def forward(self, x):
