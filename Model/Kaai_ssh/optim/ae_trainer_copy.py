@@ -9,13 +9,14 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 from utils.args import parse_args
 from datasets.Dataset import DATASET, PRETRAIN_DATASET
+from datasets.Dataset_recurrence import Recurrence_DATASET
 from config.main_config import ae_lr_milestone
 from torch.utils.data import DataLoader 
 
 
 class AETrainer(nn.Module):
     
-    def __init__(self) -> None:
+    def __init__(self, net_name) -> None:
         super().__init__()
 
         # Results
@@ -30,6 +31,7 @@ class AETrainer(nn.Module):
             "shuffle": self.args['shuffle'],
             "num_workers": self.args['num_workers']
             }
+        self.net_name = net_name
         
     def train(self, ae_flow, ae_bbox, ae_ego):
 
@@ -60,28 +62,24 @@ class AETrainer(nn.Module):
         start_time = time.time()
         epochs = self.args['nb_fol_epoch']
 
-
-        
-
-
         for epoch in range(epochs):
             ae_flow.train()
             ae_bbox.train()
             ae_ego.train()
             
-            train_dataset = PRETRAIN_DATASET(args, 'train')
-            train_gen = DataLoader(train_dataset, **dataloader_params)
+            if self.net_name == 'GRU_TAD':
+                train_dataset = PRETRAIN_DATASET(args, 'train')
+            elif self.net_name == 'Recurrence':
+                train_dataset = Recurrence_DATASET(args, 'train')
 
+            train_gen = DataLoader(train_dataset, **dataloader_params)     
             loader = tqdm(train_gen, total = len(train_gen))
-
             logger.info(f'Starting pretraining :: Train Epoch {epoch}...')
             
             ae_bbox.train()
             ae_flow.train()
             ae_ego.train()
-           
 
-                
             n_batches = 0
             epoch_start_time = time.time()
             for data in loader:
@@ -94,21 +92,19 @@ class AETrainer(nn.Module):
                 bbox_loss = torch.mean(bbox_loss)
                 bbox_loss.backward()
 
-
                 optimizer_flow.zero_grad()
                 prediction = ae_flow(flow_in)
-                flow_out = flow_out[:,flow_out.shape[1]//2, flow_out.shape[2]//2, :]
+                if self.net_name == 'GRU_TAD':
+                    flow_out = flow_out[:,flow_out.shape[1]//2, flow_out.shape[2]//2, :]
                 flow_loss = criterion(prediction, flow_out)
                 flow_loss = torch.mean(flow_loss)
                 flow_loss.backward()
-
 
                 optimizer_ego.zero_grad() 
                 prediction = ae_ego(ego_in)
                 ego_loss = criterion(prediction, ego_out)
                 ego_loss = torch.mean(ego_loss)
                 ego_loss.backward()
-
 
                 optimizer_bbox.step()
                 optimizer_flow.step()
@@ -125,8 +121,8 @@ class AETrainer(nn.Module):
                             f'| BBox Loss: {bbox_loss / n_batches:.6f} | Flow Loss: {flow_loss / n_batches:.6f} | Ego Loss: {ego_loss / n_batches:.6f}')
 
 
-        train_time = time.time() - start_time
-        logger.info('Pretraining Time: {:.3f}s'.format(train_time))
+        self.train_time = time.time() - start_time
+        logger.info('Pretraining Time: {:.3f}s'.format(self.train_time))
         logger.info('Finished pretraining.')
 
         return ae_bbox, ae_flow, ae_ego
@@ -144,9 +140,12 @@ class AETrainer(nn.Module):
     }
         logger = logging.getLogger()
         
-        val_dataset = PRETRAIN_DATASET(args, 'val')
+        if self.net_name == 'GRU_TAD':
+            val_dataset = PRETRAIN_DATASET(args, 'val')
+        elif self.net_name == 'Recurrence':
+            val_dataset = Recurrence_DATASET(args, 'val')
+
         val_gen = DataLoader(val_dataset, **dataloader_params)  
-        
         loader = tqdm(val_gen, total = len(val_gen))
 
         ae_flow.eval()
@@ -167,7 +166,8 @@ class AETrainer(nn.Module):
             bbox_loss_eval = torch.mean(bbox_loss_eval)
 
             prediction = ae_flow(flow_in)
-            flow_out = flow_out[:,flow_out.shape[1]//2, flow_out.shape[2]//2, :]
+            if self.net_name == 'GRU_TAD':
+                flow_out = flow_out[:,flow_out.shape[1]//2, flow_out.shape[2]//2, :]
             flow_loss_eval = criterion(prediction, flow_out)
             flow_loss_eval = torch.mean(flow_loss_eval)
 
@@ -182,9 +182,9 @@ class AETrainer(nn.Module):
         logger.info(f'Validation | Validation Time :: {self.validation_time:.3f}s'
                         f'| BBox Loss: {bbox_loss_eval / eval_batch:.6f} | Flow Loss: {flow_loss_eval / eval_batch:.6f} | Ego Loss: {ego_loss_eval / eval_batch:.6f}')
         
-        self.validartion_loss['BBox'] = (bbox_loss_eval / eval_batch)
-        self.validartion_loss['Flow'] =(flow_loss_eval / eval_batch)
-        self.validartion_loss['Ego'] = (ego_loss_eval / eval_batch)
+        self.validartion_loss['BBox'] = (bbox_loss_eval / eval_batch).item()
+        self.validartion_loss['Flow'] =(flow_loss_eval / eval_batch).item()
+        self.validartion_loss['Ego'] = (ego_loss_eval / eval_batch).item()
 
 
     def test(self, model):
