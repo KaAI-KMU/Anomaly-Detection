@@ -1,0 +1,90 @@
+2023-03-03 15:35:29,605 - root - INFO - Log file is result//log.txt
+2023-03-03 15:35:29,606 - root - INFO - Data path is config/fol_ego_train.yaml
+2023-03-03 15:35:29,606 - root - INFO - Export path is result/
+2023-03-03 15:35:29,607 - root - INFO - Dataset: HEVI
+2023-03-03 15:35:29,607 - root - INFO - Normal class: 0
+2023-03-03 15:35:29,607 - root - INFO - Ratio of labeled normal train samples: 0.00
+2023-03-03 15:35:29,608 - root - INFO - Ratio of labeled anomalous samples: 0.00
+2023-03-03 15:35:29,608 - root - INFO - Pollution ratio of unlabeled train data: 0.00
+2023-03-03 15:35:29,609 - root - INFO - Number of known anomaly classes: 0
+2023-03-03 15:35:29,609 - root - INFO - Network: GRU_TAD
+2023-03-03 15:35:29,961 - root - INFO - Eta-parameter: 1.00
+2023-03-03 15:35:29,961 - root - INFO - Computation device: cuda
+2023-03-03 15:35:29,962 - root - INFO - Number of threads: 0
+2023-03-03 15:35:29,962 - root - INFO - Number of dataloader workers: 0
+2023-03-03 15:35:31,856 - root - INFO - Pretraining: True
+2023-03-03 15:35:31,857 - root - INFO - Pretraining optimizer: adam
+2023-03-03 15:35:31,857 - root - INFO - Pretraining learning rate: 0.001
+2023-03-03 15:35:31,858 - root - INFO - Pretraining epochs: 100
+2023-03-03 15:35:31,858 - root - INFO - Pretraining learning rate scheduler milestones: [50]
+2023-03-03 15:35:31,858 - root - INFO - Pretraining batch size: 128
+2023-03-03 15:35:31,859 - root - INFO - Pretraining weight decay: 1e-06
+2023-03-03 15:35:34,311 - root - INFO - Starting pretraining :: Train Epoch 0...
+2023-03-03 15:35:55,554 - root - INFO - Train | Epoch: 001/003 | Train Time: 21.241s | BBox Loss: 0.000014 | Flow Loss: 1.121581 | Ego Loss: 0.000008
+2023-03-03 15:35:55,556 - root - INFO - Starting pretraining :: Eval Epoch 0...
+2023-03-03 15:36:03,456 - root - INFO - Validation | Epoch: 001/003 | | BBox Loss: 0.000028 | Flow Loss: 2.456993 | Ego Loss: 0.000012
+2023-03-03 15:36:04,017 - root - INFO - Starting pretraining :: Train Epoch 1...
+2023-03-03 15:36:21,494 - root - INFO - Train | Epoch: 002/003 | Train Time: 17.474s | BBox Loss: 0.000006 | Flow Loss: 1.074804 | Ego Loss: 0.000039
+2023-03-03 15:36:21,496 - root - INFO - Starting pretraining :: Eval Epoch 1...
+2023-03-03 15:36:28,870 - root - INFO - Validation | Epoch: 002/003 | | BBox Loss: 0.000011 | Flow Loss: 1.282510 | Ego Loss: 0.000023
+2023-03-03 15:36:29,491 - root - INFO - Starting pretraining :: Train Epoch 2...
+2023-03-03 15:36:46,961 - root - INFO - Train | Epoch: 003/003 | Train Time: 17.468s | BBox Loss: 0.000005 | Flow Loss: 1.563887 | Ego Loss: 0.000847
+2023-03-03 15:36:46,964 - root - INFO - Starting pretraining :: Eval Epoch 2...
+2023-03-03 15:36:52,704 - root - INFO - Validation | Epoch: 003/003 | | BBox Loss: 0.000025 | Flow Loss: 1.367830 | Ego Loss: 0.000010
+2023-03-03 15:36:52,705 - root - INFO - Pretraining Time: 79.256s
+2023-03-03 15:36:52,705 - root - INFO - Finished pretraining.
+2023-03-03 15:39:36,470 - root - INFO - Log file is result//log.txt
+2023-03-03 15:39:36,471 - root - INFO - Data path is config/fol_ego_train.yaml
+2023-03-03 15:39:36,471 - root - INFO - Export path is result/
+2023-03-03 15:39:36,472 - root - INFO - Dataset: HEVI
+2023-03-03 15:39:36,472 - root - INFO - Normal class: 0
+2023-03-03 15:39:36,473 - root - INFO - Ratio of labeled normal train samples: 0.00
+2023-03-03 15:39:36,473 - root - INFO - Ratio of labeled anomalous samples: 0.00
+2023-03-03 15:39:36,473 - root - INFO - Pollution ratio of unlabeled train data: 0.00
+2023-03-03 15:39:36,473 - root - INFO - Number of known anomaly classes: 0
+2023-03-03 15:39:36,474 - root - INFO - Network: GRU_TAD
+2023-03-03 15:39:39,191 - root - INFO - Eta-parameter: 1.00
+2023-03-03 15:39:39,192 - root - INFO - Computation device: cuda
+2023-03-03 15:39:39,192 - root - INFO - Number of threads: 0
+2023-03-03 15:39:39,193 - root - INFO - Number of dataloader workers: 0
+2023-03-03 15:39:47,645 - root - INFO - Log file is result//log.txt
+2023-03-03 15:39:47,646 - root - INFO - Data path is config/fol_ego_train.yaml
+2023-03-03 15:39:47,646 - root - INFO - Export path is result/
+2023-03-03 15:39:47,647 - root - INFO - Dataset: HEVI
+2023-03-03 15:39:47,647 - root - INFO - Normal class: 0
+2023-03-03 15:39:47,647 - root - INFO - Ratio of labeled normal train samples: 0.00
+2023-03-03 15:39:47,648 - root - INFO - Ratio of labeled anomalous samples: 0.00
+2023-03-03 15:39:47,648 - root - INFO - Pollution ratio of unlabeled train data: 0.00
+2023-03-03 15:39:47,649 - root - INFO - Number of known anomaly classes: 0
+2023-03-03 15:39:47,650 - root - INFO - Network: GRU_TAD
+2023-03-03 15:39:47,650 - root - INFO - Eta-parameter: 1.00
+2023-03-03 15:39:47,650 - root - INFO - Computation device: cuda
+2023-03-03 15:39:47,650 - root - INFO - Number of threads: 0
+2023-03-03 15:39:47,651 - root - INFO - Number of dataloader workers: 0
+2023-03-03 15:39:59,221 - root - INFO - Pretraining: True
+2023-03-03 15:39:59,222 - root - INFO - Pretraining optimizer: adam
+2023-03-03 15:39:59,222 - root - INFO - Pretraining learning rate: 0.001
+2023-03-03 15:39:59,222 - root - INFO - Pretraining epochs: 100
+2023-03-03 15:39:59,223 - root - INFO - Pretraining learning rate scheduler milestones: [50]
+2023-03-03 15:39:59,223 - root - INFO - Pretraining batch size: 128
+2023-03-03 15:39:59,223 - root - INFO - Pretraining weight decay: 1e-06
+2023-03-03 15:40:03,602 - root - INFO - Starting pretraining :: Train Epoch 0...
+2023-03-03 15:40:24,339 - root - INFO - Train | Epoch: 001/003 | Train Time: 20.735s | BBox Loss: 0.000014 | Flow Loss: 0.931921 | Ego Loss: 0.000003
+2023-03-03 15:40:24,341 - root - INFO - Starting pretraining :: Eval Epoch 0...
+2023-03-03 15:40:31,634 - root - INFO - Validation | Epoch: 001/003 | | BBox Loss: 0.000088 | Flow Loss: 2.559520 | Ego Loss: 0.000002
+2023-03-03 15:40:32,185 - root - INFO - Starting pretraining :: Train Epoch 1...
+2023-03-03 15:40:48,104 - root - INFO - Train | Epoch: 002/003 | Train Time: 15.897s | BBox Loss: 0.000005 | Flow Loss: 1.040757 | Ego Loss: 0.000148
+2023-03-03 15:40:48,106 - root - INFO - Starting pretraining :: Eval Epoch 1...
+2023-03-03 15:40:55,312 - root - INFO - Validation | Epoch: 002/003 | | BBox Loss: 0.000019 | Flow Loss: 1.727440 | Ego Loss: 0.000003
+2023-03-03 15:40:55,917 - root - INFO - Starting pretraining :: Train Epoch 2...
+2023-03-03 15:41:12,490 - root - INFO - Train | Epoch: 003/003 | Train Time: 16.570s | BBox Loss: 0.000011 | Flow Loss: 1.378358 | Ego Loss: 0.001436
+2023-03-03 15:41:12,492 - root - INFO - Starting pretraining :: Eval Epoch 2...
+2023-03-03 15:41:19,922 - root - INFO - Validation | Epoch: 003/003 | | BBox Loss: 0.000042 | Flow Loss: 0.791346 | Ego Loss: 0.000009
+2023-03-03 15:41:19,922 - root - INFO - Pretraining Time: 77.164s
+2023-03-03 15:41:19,923 - root - INFO - Finished pretraining.
+2023-03-03 15:43:47,758 - root - INFO - Training optimizer: adam
+2023-03-03 15:43:48,386 - root - INFO - Training learning rate: 0.001
+2023-03-03 15:43:49,450 - root - INFO - Training epochs: 50
+2023-03-03 15:43:51,932 - root - INFO - Training learning rate scheduler milestones: [25]
+2023-03-03 15:43:53,907 - root - INFO - Training batch size: 128
+2023-03-03 15:43:55,408 - root - INFO - Training weight decay: 1e-06
