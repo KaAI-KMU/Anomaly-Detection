@@ -88,12 +88,12 @@ class DeepSAD(object):
         self.ae_flow, self.ae_bbox, self.ae_ego = build_autoencoder(self.net_name)
 
         # Train
-        self.ae_trainer = AETrainer() #Reconstruct Trainer
+        self.ae_trainer = AETrainer(net_name=self.net_name) #Reconstruct Trainer
         
         self.ae_flow, self.ae_bbox, self.ae_ego = self.ae_trainer.train(self.ae_flow, self.ae_bbox, self.ae_ego)
 
         # Get train results
-        self.ae_trainer.validate()
+        self.ae_trainer.validation(self.ae_flow, self.ae_bbox, self.ae_ego)
 
         self.ae_results['train_time'] = self.ae_trainer.train_time
         self.ae_results['validation_time'] = self.ae_trainer.validation_time
