@@ -1,1 +1,1 @@
-print('Hello World\n\nasd')
+print('Hello World\n\n')
