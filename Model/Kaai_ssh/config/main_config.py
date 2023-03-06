@@ -1,5 +1,5 @@
 dataset_name = 'HEVI'
-net_name = 'GRU_TAD'
+net_name = 'Recurrence'
 xp_path = 'result/'
 data_path = 'config/fol_ego_train.yaml'
 load_config = None

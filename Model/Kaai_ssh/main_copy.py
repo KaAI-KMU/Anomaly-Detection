@@ -19,7 +19,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    log_file = xp_path + '/log.txt'
+    log_file = xp_path + 'log.txt'
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)

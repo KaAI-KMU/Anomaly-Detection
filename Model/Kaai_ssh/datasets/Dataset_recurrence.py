@@ -109,4 +109,4 @@ class Recurrence_DATASET(data.Dataset):
         input_flow = torch.FloatTensor(input_flow).to(device)
         input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
 
-        return input_bbox, input_flow, input_ego_motion
+        return input_bbox, input_flow, input_ego_motion, input_bbox, input_flow, input_ego_motion
