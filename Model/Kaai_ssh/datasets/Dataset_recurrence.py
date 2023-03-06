@@ -8,7 +8,7 @@ from torch.utils import data
 import json
 
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def rec_plot_module(s, eps=0.01, steps = 255):
     N = s.size
