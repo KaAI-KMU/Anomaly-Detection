@@ -1,0 +1,8 @@
+Model/Kaai_ssh/media
+*.pyc
+*.ipynb
+*.json
+*.txt
+*.pkl
+Preprocessing/Make_Pickle/data
+*.flo
