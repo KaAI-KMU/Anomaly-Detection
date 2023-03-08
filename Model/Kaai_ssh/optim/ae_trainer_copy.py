@@ -21,7 +21,8 @@ class AETrainer(nn.Module):
 
         # Results
         self.train_time = None
-        self.validartion_loss = {'BBox' : None, 'Flow' : None, 'Ego' : None}
+        self.validartion_loss = {'BBox' : 0, 'Flow' : 0, 'Ego' : 0}
+        self.train_loss = {'BBox' : 0, 'Flow' : 0, 'Ego' : 0}
         self.validation_time = None
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -120,10 +121,17 @@ class AETrainer(nn.Module):
             logger.info(f'Train | Epoch: {epoch + 1:03}/{epochs:03} | Train Time: {epoch_train_time:.3f}s '
                             f'| BBox Loss: {bbox_loss / n_batches:.6f} | Flow Loss: {flow_loss / n_batches:.6f} | Ego Loss: {ego_loss / n_batches:.6f}')
 
-
+            self.train_loss['BBox'] += (bbox_loss.item()/n_batches)
+            self.train_loss['Flow'] += (flow_loss.item()/n_batches)
+            self.train_loss['Ego'] += (ego_loss.item()/n_batches)
+            
         self.train_time = time.time() - start_time
         logger.info('Pretraining Time: {:.3f}s'.format(self.train_time))
         logger.info('Finished pretraining.')
+
+        self.train_loss['BBox'] /= epochs
+        self.train_loss['Flow'] /= epochs
+        self.train_loss['Ego'] /= epochs
 
         return ae_bbox, ae_flow, ae_ego
     
@@ -177,7 +185,7 @@ class AETrainer(nn.Module):
 
             eval_batch += 1
 
-        self.validation_time = start - time.time()
+        self.validation_time = time.time() - start
 
         logger.info(f'Validation | Validation Time :: {self.validation_time:.3f}s'
                         f'| BBox Loss: {bbox_loss_eval / eval_batch:.6f} | Flow Loss: {flow_loss_eval / eval_batch:.6f} | Ego Loss: {ego_loss_eval / eval_batch:.6f}')

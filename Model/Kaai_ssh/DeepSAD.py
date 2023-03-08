@@ -42,15 +42,9 @@ class DeepSAD(object):
         self.ae_optimizer_name = None
 
         self.results = {
-            'train_time': None,
-            'validation_time': None,
-            'validation_loss' : []
         }
 
         self.ae_results = {
-            'train_time': None,
-            'test_auc': None,
-            'test_time': None
         }
 
     def set_network(self, net_name):
@@ -77,7 +71,6 @@ class DeepSAD(object):
         self.trainer.test(self.net)
 
         # Get results
-        self.results['test_auc'] = self.trainer.test_auc
         self.results['test_time'] = self.trainer.test_time
         self.results['test_scores'] = self.trainer.test_scores
 
@@ -96,6 +89,7 @@ class DeepSAD(object):
         self.ae_trainer.validation(self.ae_flow, self.ae_bbox, self.ae_ego)
 
         self.ae_results['train_time'] = self.ae_trainer.train_time
+        self.ae_results['train_loss'] = self.ae_trainer.train_loss
         self.ae_results['validation_time'] = self.ae_trainer.validation_time
         self.ae_results['validation_loss'] = self.ae_trainer.validartion_loss
 
