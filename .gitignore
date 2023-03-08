@@ -1,3 +1,4 @@
 Model/Kaai_ssh/media
 *.pyc
 *.ipynb
+*.json
