@@ -5,5 +5,5 @@
 ## 데이터셋
 DoTA: URL "https://github.com/MoonBlvd/Detection-of-Traffic-Anomaly"
 
-## 
+## 모델
 ![Alt text](image/Recurrence_base_model.png)
