@@ -3,3 +3,6 @@ Model/Kaai_ssh/media
 *.ipynb
 *.json
 *.txt
+*.pkl
+Preprocessing/Make_Pickle/data
+*.flo
