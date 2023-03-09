@@ -3,10 +3,15 @@ Recover the scale of monocular visual odometry
 
 # RUN
 modify the `src/param.py` based on your dataset 
+
 #path.txt 생성하는 코드
+
    python src/main.py {이미지 경로}
+   
 #visualize
+
    python script/plot_path.py {생성 path} {GT path}
+   
    python script/test.py {ego 파일}
    
 
