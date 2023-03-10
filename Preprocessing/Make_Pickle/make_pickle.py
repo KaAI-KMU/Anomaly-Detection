@@ -3,9 +3,9 @@ import os
 from skimage.transform import  resize
 import pickle as pkl
 
-root = 'data/'
+root = 'D:/BDD/bdd100k_40/'
 
-video_names = [name.split('.')[0] for name in os.listdir(root) if name.endswith('.txt')]
+video_names = [name.split('.')[0] for name in os.listdir(f'{root}egos/') if name.endswith('.txt')]
 TAG_FLOAT = 202021.25
 
 image_resolution = (1280, 720)
@@ -33,7 +33,7 @@ def read_flo(file):
     return flow
 
 def load_flo(video_name, frame_id, bbox):
-    file_path = f'data/{video_name}/{str(frame_id+1).zfill(6)}.flo'
+    file_path = f'{root}flow/{video_name}/{str(frame_id+1).zfill(6)}.flo'
     image = read_flo(file_path)
     image = image[int(bbox[6]/image_resolution[1]*flow_resolution[1]):
                   int(bbox[7]/image_resolution[1]*flow_resolution[1]),
@@ -59,10 +59,11 @@ def interpolate(start, end, between, is_id = False):
     return result
 
 for video_name in video_names:
+    print(f'Start New Video {video_name}')
     save_dir = f'result/{video_name}/'
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
-    with open(f'{root}{video_name}.txt', 'r') as f:
+    with open(f'{root}egos/{video_name}.txt', 'r') as f:
         temp = f.read().strip()
     temp = temp.replace('\n',' ')
     temp = list(temp.split(' '))
@@ -71,7 +72,7 @@ for video_name in video_names:
     ego_motion = []
     for index in range(0, len(temp), 3):
         ego_motion.append(temp[index:index+3])
-    bbox = np.loadtxt(f'{root}{video_name}.npy', delimiter=',')
+    bbox = np.loadtxt(f'{root}bbox/{video_name}.npy', delimiter=',')
     # frame, id, center_x, center_y, width, height, top, top+height, left, left+width
     ### BBox 파일(numpy) Ego 파일(txt) 불러오기 완료
 
