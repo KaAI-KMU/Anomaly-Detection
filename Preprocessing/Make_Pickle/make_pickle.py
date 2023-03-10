@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import cv2
 from skimage.transform import  resize
 import pickle as pkl
 
@@ -34,13 +33,21 @@ def read_flo(file):
     return flow
 
 def load_flo(video_name, frame_id, bbox):
-    file_path = f'data/{video_name}_flo/{str(frame_id+1).zfill(6)}.flo'
+    file_path = f'data/{video_name}/{str(frame_id+1).zfill(6)}.flo'
     image = read_flo(file_path)
     image = image[int(bbox[6]/image_resolution[1]*flow_resolution[1]):
                   int(bbox[7]/image_resolution[1]*flow_resolution[1]),
                   int(bbox[8]/image_resolution[0]*flow_resolution[0]):
                   int(bbox[9]/image_resolution[0]*flow_resolution[0])]
     return resize(image, flow_shape)
+
+def make_bbox(bbox):
+    temp = []
+    temp.append(bbox[0]/image_resolution[0])
+    temp.append(bbox[1]/image_resolution[1])
+    temp.append(bbox[2]/image_resolution[0])
+    temp.append(bbox[3]/image_resolution[1])
+    return np.array(temp)
 
 def interpolate(start, end, between, is_id = False):
     temp = np.linspace(start, end, between+1)[1:]
@@ -72,14 +79,13 @@ for video_name in video_names:
     dictionary = {}
 
     for index in range(len(bbox)-1):
-        #print(bbox[index][0])
         if bbox[index][0] >= len(ego_motion)-1:
             break
         if bbox[index][1] not in now_object: # 신규 id
             
             #print(f'Frame Number :: {int(bbox[index][0])}')
 
-            dictionary[int(bbox[index][1])] = {'bbox' : [bbox[index][2:6]], # numpy array
+            dictionary[int(bbox[index][1])] = {'bbox' : [make_bbox(bbox[index][2:6])], # numpy array
                                             'frame_id' : [int(bbox[index][0])], # int
                                             'ego_motion' : [ego_motion[int(bbox[index][0])-1]],  # list
                                             'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])]} # numpy array
@@ -87,7 +93,7 @@ for video_name in video_names:
         else: # 이전에 있던 데이터라면
             if int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1] <= THRESHOLD: # 감당가능한 범위 내라면
                 #print(f'Frame Number :: {int(bbox[index][0])}')
-                dictionary[int(bbox[index][1])]['bbox'] += interpolate(dictionary[int(bbox[index][1])]['bbox'][-1], bbox[index][2:6], int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
+                dictionary[int(bbox[index][1])]['bbox'] += interpolate(dictionary[int(bbox[index][1])]['bbox'][-1], make_bbox(bbox[index][2:6]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['ego_motion'] += interpolate(dictionary[int(bbox[index][1])]['ego_motion'][-1], ego_motion[int(bbox[index][0])-1], int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['flow'] += interpolate(dictionary[int(bbox[index][1])]['flow'][-1], load_flo(video_name, int(bbox[index][0]), bbox[index]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['frame_id'] += interpolate(dictionary[int(bbox[index][1])]['frame_id'][-1], int(bbox[index][0]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1], is_id=True)
@@ -99,11 +105,13 @@ for video_name in video_names:
                 #print(dictionary[bbox[index][1]]['frame_id'])
                 #print(bbox[index][1])
                 #print(f'Frame Number :: {int(bbox[index][0])}')
-                dictionary[int(bbox[index][1])] = {'bbox' : [bbox[index][2:6]], # numpy array
-                                'frame_id' : [int(bbox[index][0])], # int
-                                'ego_motion' : [ego_motion[int(bbox[index][0])-1]],  # list
-                                'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])]}, # numpy array
-                
+                dictionary[int(bbox[index][1])] = {}
+                temp = {'bbox' : [make_bbox(bbox[index][2:6])], # numpy array
+                                            'frame_id' : [int(bbox[index][0])], # int
+                                            'ego_motion' : [ego_motion[int(bbox[index][0])-1]],  # list
+                                            'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])]} # numpy array
+            
+                dictionary[int(bbox[index][1])] = temp
     for key in dictionary.keys():
         start_frame = dictionary[key]['frame_id'][0]
         print(f'Save File {save_dir}{video_name}_{key}_{start_frame}.pkl')
