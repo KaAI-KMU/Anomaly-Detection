@@ -42,15 +42,6 @@ def load_flo(video_name, frame_id, bbox):
                   int(bbox[9]/image_resolution[0]*flow_resolution[0])]
     return resize(image, flow_shape)
 
-def load_image(video_name, frame_id, bbox):
-    file_path = f'data/{video_name}_img/{str(frame_id).zfill(6)}.jpg'
-    image = cv2.imread(file_path)
-    image = image[int(bbox[6]):
-                  int(bbox[7]),
-                  int(bbox[8]):
-                  int(bbox[9])]
-    return resize(image, (256,256,3))
-
 def interpolate(start, end, between, is_id = False):
     temp = np.linspace(start, end, between+1)[1:]
     result = []
@@ -91,8 +82,7 @@ for video_name in video_names:
             dictionary[int(bbox[index][1])] = {'bbox' : [bbox[index][2:6]], # numpy array
                                             'frame_id' : [int(bbox[index][0])], # int
                                             'ego_motion' : [ego_motion[int(bbox[index][0])-1]],  # list
-                                            'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])], # numpy array
-                                            'image' : [load_image(video_name, int(bbox[index][0]), bbox[index])]} # numpy array
+                                            'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])]} # numpy array
             now_object.append(bbox[index][1])
         else: # 이전에 있던 데이터라면
             if int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1] <= THRESHOLD: # 감당가능한 범위 내라면
@@ -100,7 +90,6 @@ for video_name in video_names:
                 dictionary[int(bbox[index][1])]['bbox'] += interpolate(dictionary[int(bbox[index][1])]['bbox'][-1], bbox[index][2:6], int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['ego_motion'] += interpolate(dictionary[int(bbox[index][1])]['ego_motion'][-1], ego_motion[int(bbox[index][0])-1], int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['flow'] += interpolate(dictionary[int(bbox[index][1])]['flow'][-1], load_flo(video_name, int(bbox[index][0]), bbox[index]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
-                dictionary[int(bbox[index][1])]['image'] += interpolate(dictionary[int(bbox[index][1])]['image'][-1], load_image(video_name, int(bbox[index][0]), bbox[index]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1])
                 dictionary[int(bbox[index][1])]['frame_id'] += interpolate(dictionary[int(bbox[index][1])]['frame_id'][-1], int(bbox[index][0]), int(bbox[index][0]) - dictionary[bbox[index][1]]['frame_id'][-1], is_id=True)
             else: # 범위 밖의 데이터
                 start_frame = dictionary[bbox[index][1]]['frame_id'][0]
@@ -113,8 +102,7 @@ for video_name in video_names:
                 dictionary[int(bbox[index][1])] = {'bbox' : [bbox[index][2:6]], # numpy array
                                 'frame_id' : [int(bbox[index][0])], # int
                                 'ego_motion' : [ego_motion[int(bbox[index][0])-1]],  # list
-                                'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])], # numpy array
-                                'image' : [load_image(video_name, int(bbox[index][0]), bbox[index])]} # numpy array
+                                'flow' : [load_flo(video_name, int(bbox[index][0]), bbox[index])]}, # numpy array
                 
     for key in dictionary.keys():
         start_frame = dictionary[key]['frame_id'][0]
