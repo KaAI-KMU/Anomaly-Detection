@@ -33,7 +33,7 @@ def read_flo(file):
     return flow
 
 def load_flo(video_name, frame_id, bbox):
-    file_path = f'{root}flow/{video_name}/{str(frame_id+1).zfill(6)}.flo'
+    file_path = f'{root}flow/{video_name}/{str(frame_id).zfill(6)}.flo'
     image = read_flo(file_path)
     image = image[int(bbox[6]/image_resolution[1]*flow_resolution[1]):
                   int(bbox[7]/image_resolution[1]*flow_resolution[1]),
@@ -59,6 +59,9 @@ def interpolate(start, end, between, is_id = False):
     return result
 
 for video_name in video_names:
+
+    #video_name = '662b3e34-87daf4b9'
+
     print(f'Start New Video {video_name}')
 
     save_dir = f'result/{video_name}/'
@@ -80,8 +83,11 @@ for video_name in video_names:
     now_object = []
     dictionary = {}
 
-    for index in range(len(bbox)-1):
-        if bbox[index][0] >= len(ego_motion)-1:
+    length = len(ego_motion)
+
+    for index in range(len(bbox)):
+
+        if bbox[index][0] >= length:
             break
         if bbox[index][4]/image_resolution[1]*flow_resolution[1] < 5 or bbox[index][5]/image_resolution[1]*flow_resolution[1] < 5:
             pass
@@ -120,4 +126,4 @@ for video_name in video_names:
         start_frame = dictionary[key]['frame_id'][0]
         print(f'Save File {save_dir}{video_name}_{key}_{start_frame}.pkl')
         with open(file = f'{save_dir}{video_name}_{key}_{start_frame}.pkl', mode = 'wb') as f:
-            pkl.dump(dictionary[bbox[index][1]], f)
+            pkl.dump(dictionary[key], f)
