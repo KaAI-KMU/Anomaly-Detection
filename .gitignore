@@ -6,3 +6,4 @@ Model/Kaai_ssh/media
 *.pkl
 Preprocessing/Make_Pickle/data
 *.flo
+Preprocessing/Make_Pickle/test
