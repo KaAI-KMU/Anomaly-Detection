@@ -60,6 +60,7 @@ def interpolate(start, end, between, is_id = False):
 
 for video_name in video_names:
     print(f'Start New Video {video_name}')
+
     save_dir = f'result/{video_name}/'
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
@@ -82,7 +83,9 @@ for video_name in video_names:
     for index in range(len(bbox)-1):
         if bbox[index][0] >= len(ego_motion)-1:
             break
-        if bbox[index][1] not in now_object: # 신규 id
+        if bbox[index][4]/image_resolution[1]*flow_resolution[1] < 5 or bbox[index][5]/image_resolution[1]*flow_resolution[1] < 5:
+            pass
+        elif bbox[index][1] not in now_object: # 신규 id
             
             #print(f'Frame Number :: {int(bbox[index][0])}')
 
