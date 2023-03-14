@@ -31,4 +31,6 @@ If you want to change saving path, change line 64
 
 'THRESHOLD' is value that endure can't detect object's bbox. Default value is 3.
 
+'PASS_SIZE' minimum length that will be saved
+
 If there is 2 frame that can't detect object bbox, it will interpolate the value that missed it by using linspace.
