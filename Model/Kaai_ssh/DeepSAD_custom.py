@@ -4,6 +4,7 @@ import torch
 from base.base_dataset import BaseADDataset
 from networks.main import build_network, build_autoencoder
 from optim.DeepSAD_trainer import DeepSADTrainer
+from optim.DeepSAD_trainer_ego import DeepSADTrainer_ego
 from optim.ae_trainer_copy import AETrainer
 from networks.seperate_autoencoder_model import bbox_model, flow_model, ego_model, model
 
@@ -30,6 +31,7 @@ class DeepSAD(object):
 
         self.eta = eta
         self.c = None  # hypersphere center c
+        self.c_ego = None
 
         self.net_name = None
         self.net = None  # neural network phi
@@ -50,6 +52,9 @@ class DeepSAD(object):
             'test_auc': None,
             'test_time': None,
             'test_scores': None,
+            'test_ego_auc': None,
+            'test_ego_scores': None
+            
         }
 
         self.ae_results = {
@@ -72,23 +77,34 @@ class DeepSAD(object):
         self.trainer = DeepSADTrainer(self.c, self.eta, optimizer_name=optimizer_name, lr=lr, n_epochs=n_epochs,
                                       lr_milestones=lr_milestones, batch_size=batch_size, weight_decay=weight_decay,
                                       device=device, n_jobs_dataloader=n_jobs_dataloader)
+        self.ego_trainer = DeepSADTrainer_ego(self.c_ego, self.eta, optimizer_name=optimizer_name, lr=lr, n_epochs=n_epochs,
+                                      lr_milestones=lr_milestones, batch_size=batch_size, weight_decay=weight_decay,
+                                      device=device, n_jobs_dataloader=n_jobs_dataloader)
+        
         # Get the model
         self.net = self.trainer.train(dataset, self.net)
-        self.results['train_time'] = self.trainer.train_time
+        self.ego_net = self.ego_trainer.train(dataset, self.net)
+        self.results['train_time'] = self.trainer.train_time + self.ego_trainer.train_time
         self.c = self.trainer.c.cpu().data.numpy().tolist()  # get as list
+        self.c_ego = self.ego_trainer.c.cpu().data.numpy().tolist()
 
     def test(self, dataset: BaseADDataset, device: str = 'cuda', n_jobs_dataloader: int = 0):
         """Tests the Deep SAD model on the test data."""
 
         if self.trainer is None:
             self.trainer = DeepSADTrainer(self.c, self.eta, device=device, n_jobs_dataloader=n_jobs_dataloader)
+        if self.ego_trainer is None:
+            self.ego_trainer = DeepSADTrainer_ego(self.c_ego, self.eta, device=device, n_jobs_dataloader=n_jobs_dataloader)
 
         self.trainer.test(dataset, self.net)
+        self.ego_trainer.test(dataset, self.net)
 
         # Get results
         self.results['test_auc'] = self.trainer.test_auc
-        self.results['test_time'] = self.trainer.test_time
+        self.results['test_ego_auc'] = self.ego_trainer.test_auc
+        self.results['test_time'] = self.trainer.test_time + self.ego_trainer.test_time
         self.results['test_scores'] = self.trainer.test_scores
+        self.results['test_ego_scores'] = self.ego_trainer.test_scores
 
     def pretrain(self, dataset):
         """Pretrains the weights for the Deep SAD network phi via autoencoder."""
@@ -146,6 +162,7 @@ class DeepSAD(object):
         ego_dict = self.ae_ego.state_dict() if save_ae else None
 
         torch.save({'c': self.c,
+                    'c_ego': self.c_ego,
                     'net_dict': net_dict,
                     'flow_dict': flow_dict,
                     'bbox_dict': bbox_dict,
@@ -157,6 +174,7 @@ class DeepSAD(object):
         model_dict = torch.load(model_path, map_location=map_location)
 
         self.c = model_dict['c']
+        self.c_ego = model_dict['c_ego']
         self.net.load_state_dict(model_dict['net_dict'])
 
         # load autoencoder parameters if specified
