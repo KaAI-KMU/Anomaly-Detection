@@ -4,7 +4,7 @@ from skimage.transform import  resize
 import pickle as pkl
 import logging
 
-root = 'D:/BDD/bdd100k_40/'
+root = 'D:/bdd100k/'
 
 video_names = [name.split('.')[0] for name in os.listdir(f'{root}egos/') if name.endswith('.txt')]
 TAG_FLOAT = 202021.25
@@ -16,7 +16,7 @@ flow_shape = (5,5,2)
 
 THRESHOLD = 3
 
-PASS_SIZE = 20
+#PASS_SIZE = 20
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -46,7 +46,7 @@ def read_flo(file):
     return flow
 
 def load_flo(video_name, frame_id, bbox):
-    file_path = f'{root}flow/{video_name}/{str(frame_id).zfill(6)}.flo'
+    file_path = f'{root}flows/train/{video_name}/{str(frame_id).zfill(6)}.flo'
     image = read_flo(file_path)
     image = image[int(bbox[6]/image_resolution[1]*flow_resolution[1]):
                   int(bbox[7]/image_resolution[1]*flow_resolution[1]),
@@ -81,7 +81,7 @@ for video_name in video_names:
     if not os.path.isfile(f'{root}egos/{video_name}.txt'):
         #logging that there isn.'t file using python logger
         logger.warning(f'Ego does not exit\t{video_name}')
-    elif not os.path.isfile(f'{root}bbox/{video_name}.npy'):
+    elif not os.path.isfile(f'{root}bbox/train_class/{video_name}.npy'):
         logger.warning(f'BBox does not exit\t{video_name}')
     else:
         if not os.path.isdir(save_dir):
@@ -95,7 +95,7 @@ for video_name in video_names:
         ego_motion = []
         for index in range(0, len(temp), 3):
             ego_motion.append(temp[index:index+3])
-        bbox = np.loadtxt(f'{root}bbox/{video_name}.npy', delimiter=',')
+        bbox = np.loadtxt(f'{root}bbox/train_class/{video_name}.npy', delimiter=',')
         # frame, id, center_x, center_y, width, height, top, top+height, left, left+width
         ### BBox 파일(numpy) Ego 파일(txt) 불러오기 완료
 
@@ -125,9 +125,9 @@ for video_name in video_names:
                 else: # 범위 밖의 데이터
                     start_frame = dictionary[bbox[index][1]]['frame_id'][0]
                     print(f'Save File {save_dir}{video_name}_{int(bbox[index][1])}_{start_frame}.pkl')
-                    if dictionary[bbox[index][1]]['frame_id'] >= PASS_SIZE:
-                        with open(file = f'{save_dir}{video_name}_{int(bbox[index][1])}_{start_frame}.pkl', mode = 'wb') as f:
-                            pkl.dump(dictionary[bbox[index][1]], f)
+
+                    with open(file = f'{save_dir}{video_name}_{int(bbox[index][1])}_{start_frame}.pkl', mode = 'wb') as f:
+                        pkl.dump(dictionary[bbox[index][1]], f)
                     #print(dictionary[bbox[index][1]]['frame_id'])
                     #print(bbox[index][1])
                     #print(f'Frame Number :: {int(bbox[index][0])}')
@@ -140,7 +140,6 @@ for video_name in video_names:
                     dictionary[int(bbox[index][1])] = temp
         for key in dictionary.keys():
             start_frame = dictionary[key]['frame_id'][0]
-            if dictionary[bbox[index][1]]['frame_id'] >=PASS_SIZE:
-                print(f'Save File {save_dir}{video_name}_{key}_{start_frame}.pkl')
-                with open(file = f'{save_dir}{video_name}_{key}_{start_frame}.pkl', mode = 'wb') as f:
-                    pkl.dump(dictionary[key], f)
+            print(f'Save File {save_dir}{video_name}_{key}_{start_frame}.pkl')
+            with open(file = f'{save_dir}{video_name}_{key}_{start_frame}.pkl', mode = 'wb') as f:
+                pkl.dump(dictionary[key], f)
