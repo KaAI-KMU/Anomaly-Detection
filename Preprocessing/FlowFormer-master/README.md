@@ -1,3 +1,7 @@
+# Prepare .pth file
+- Download 'things_kitty.pth'
+- checkpoints/things_kitty.pth
+
 # Run code
 - python visualize_flow.py --eval_type seq --seq_dir [이미지 경로] --name [동영상 이름]
 
