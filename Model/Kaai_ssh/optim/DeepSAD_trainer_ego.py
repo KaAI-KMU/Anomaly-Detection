@@ -81,19 +81,14 @@ class DeepSADTrainer_ego():
             for data in train_loader:
                 bbox_in, flow_in, _, bbox_out, _, cls = data #ego_in, ego_out
                 
+                #cls분류 
+                # abnormal without ego일 경우 normal로 취급함. 
+                if cls == -1.0:
+                    cls = 1.0
+                elif cls == -2.0:
+                    cls = -1.0
 
-                #cls분류
-                if cls == 1:
-                    ego_cls = 1
-                elif cls == -1:
-                    ego_cls = 0
-                elif cls == -2:
-                    cls = -1
-                    ego_cls = -1
-                elif cls == 0:
-                    ego_cls = 0
-
-                bbox_in, flow_in, cls, ego_cls = bbox_in.to(self.device), flow_in.to(self.device), cls.to(self.device), ego_cls.to(self.device)
+                bbox_in, flow_in, cls = bbox_in.to(self.device), flow_in.to(self.device), cls.to(self.device)
                 
                 # Zero the network parameter gradients
                 optimizer.zero_grad()
@@ -143,6 +138,11 @@ class DeepSADTrainer_ego():
         with torch.no_grad():
             for data in loader:
                 bbox_in, flow_in, _, bbox_out, _, cls = data
+                
+                if cls == -1.0:
+                    cls = 1.0
+                elif cls == -2.0:
+                    cls = -1.0
 
                 bbox_in = bbox_in.to(self.device)
                 flow_in = flow_in.to(self.device)
