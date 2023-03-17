@@ -1,5 +1,6 @@
 dataset_name = 'HEVI'
 net_name = 'Recurrence'
+ego_net_name = 'EGO_Recurrence'
 xp_path = 'result/'
 data_path = 'config/fol_ego_train.yaml'
 load_config = None

@@ -40,8 +40,8 @@ class EGO_DATASET(data.Dataset):
                 labels = None
             data = pkl.load(open(data_path, 'rb'))
             
-            bbox = data['bbox']
-            flow = data['flow']
+            #bbox = data['bbox']
+            #flow = data['flow']
             ego_motion = data['ego_motion']# [yaw, x, z]
             #label = data['label'] # 1: normal, -1: abnormal witout ego, -2: abnormal with ego
             
@@ -49,27 +49,27 @@ class EGO_DATASET(data.Dataset):
 
             # go farwad along the session to get data samples
             seed = np.random.randint(self.args['seed_max'])
-            for start in range(seed, len(flow), int(self.args['segment_len']/2)):
+            for start in range(seed, len(ego_motion), int(self.args['segment_len']/2)):
 
                 end = start + self.args['segment_len']
-                if end + self.args['pred_timesteps'] <= len(bbox) and end <= len(flow):
-                    input_bbox = bbox[start:end,:]
-                    input_flow = flow[start:end,:,:,:]
+                if end + self.args['pred_timesteps'] <= len(ego_motion):
+                    #input_bbox = bbox[start:end,:]
+                    #input_flow = flow[start:end,:,:,:]
                     input_ego_motion = self.get_input(ego_motion, start, end)
                     
-                    target_bbox = self.get_target(bbox, start, end)
+                    #target_bbox = self.get_target(bbox, start, end)
                     target_ego_motion = self.get_target(ego_motion, start, end)
                     if labels == None:
-                        abnormal_label = 0.0
+                        abnormal_label = 0
                     else:
                         abnormal_labels = labels[start:end,:]["accident_id"]
                         if sum(abnormal_labels) != 0 and egoinvolve:
-                            abnormal_label = -2.0
+                            abnormal_label = -2
                         elif sum(abnormal_label) != 0 and not egoinvolve:
-                            abnormal_label = -1.0
+                            abnormal_label = -1
                         else:
-                            abnormal_label = 1.0
-                            
+                            abnormal_label = 1
+                        
                     
                     # target_ego_motion = self.get_target(ego_motion_session, ego_start, ego_end)
                     # if input_flow.shape[0] != 16:
@@ -78,8 +78,9 @@ class EGO_DATASET(data.Dataset):
                     #     print(input_flow.shape)
                     #     print("start: {} end:{} length:{}".format(start, end, self.args.segment_len))
                     
-                    self.all_inputs.append([input_bbox, input_flow, input_ego_motion, target_bbox, target_ego_motion, abnormal_label])
+                    self.all_inputs.append([input_ego_motion, target_ego_motion, abnormal_label])
             
+            ############################# 이거 남겨야 되나? ##########################################
             # go backward along the session to get data samples again
             seed = np.random.randint(self.args['seed_max'])
             for end in range(min([len(bbox)-self.args['pred_timesteps'], len(flow)]), 
@@ -149,17 +150,13 @@ class EGO_DATASET(data.Dataset):
         return len(self.all_inputs)
     
     def __getitem__(self, index):
-        input_bbox, input_flow, input_ego_motion, target_bbox, target_ego_motion, abnormal_label = self.all_inputs[index]
+        input_ego_motion, target_ego_motion, abnormal_label = self.all_inputs[index]
         
-        input_bbox = torch.FloatTensor(input_bbox).to(device)
-        input_flow = torch.FloatTensor(input_flow).to(device)
         input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
-
-        target_bbox = torch.FloatTensor(target_bbox).to(device)
         target_ego_motion = torch.FloatTensor(target_ego_motion).to(device)
         abnormal_label = torch.FloatTensor(abnormal_label).to(device)
 
-        return input_bbox, input_flow, input_ego_motion, target_bbox, target_ego_motion, abnormal_label
+        return input_ego_motion, target_ego_motion, abnormal_label
     
 
     

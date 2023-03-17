@@ -42,6 +42,7 @@ def main():
     else:
         logger.info('Number of known anomaly classes: %d' % n_known_outlier_classes)
     logger.info('Network: %s' % net_name)
+    logger.info('EGO Network: %s' % ego_net_name)
 
     # Print model configuration
     logger.info('Eta-parameter: %.2f' % eta)
@@ -67,7 +68,7 @@ def main():
 
     # Initialize DeepSAD model and set neural network phi
     deepSAD = DeepSAD(eta)
-    deepSAD.set_network(net_name)
+    deepSAD.set_network(net_name, ego_net_name)
     
     # If specified, load Deep SAD model (center c, network weights, and possibly autoencoder weights)
     if load_model:

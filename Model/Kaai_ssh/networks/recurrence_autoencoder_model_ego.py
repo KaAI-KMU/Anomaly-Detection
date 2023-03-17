@@ -288,5 +288,42 @@ class recurrence_model(nn.Module):
         bbox_feature = self.bbox_encoder(bbox)
         ego_feature = self.ego_encoder(ego)
 
-        #ego feature 따로 빼서 따로 Deep SAD 진행하게끔
-        return flow_feature + bbox_feature + ego_feature, ego_feature
+        return flow_feature + bbox_feature + ego_feature
+    
+    
+class recurrence_model_ego(nn.Module):
+    """For Ego-task"""
+    def __init__(self):
+        super(recurrence_model, self).__init__()
+        
+        self.ego_encoder = nn.Sequential(
+            #input = 16 * 16 * 9
+            nn.Conv2d(3, 16, 3, padding = 'same'),
+            nn.ReLU(),
+            # result = 16 * 16 * 16
+
+            #input = 16 * 16 * 16
+            nn.Conv2d(16, 32, 3, padding = 'same'),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            # result = 8 * 8 * 32
+
+            #input = 8 * 8 * 32
+            nn.Conv2d(32, 64, 3, padding = 'same'),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            # result = 4 * 4 * 64
+        
+            #input = 4 * 4 * 64
+            nn.Conv2d(64, 128, 3, padding = 'same'),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+            # result = 2 * 2 * 128
+        )
+    
+    def forward(self, ego):
+        
+        ego_feature = self.ego_encoder(ego)
+        
+        return ego_feature
+    

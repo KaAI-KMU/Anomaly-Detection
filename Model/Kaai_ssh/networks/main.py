@@ -1,7 +1,7 @@
 
 from .GRU_TAD import Encoder_GRU
 import networks.seperate_autoencoder_model as sam
-import networks.recurrence_autoencoder_model as ram
+import networks.recurrence_autoencoder_model_ego as ram
 #from test1 import test1
 
 def build_network(net_name, ae_net=None):
@@ -17,7 +17,9 @@ def build_network(net_name, ae_net=None):
         net = sam.model()
     elif net_name == 'Recurrence':
         net = ram.recurrence_model()
-
+    elif net_name == 'EGO_Recurrence':
+        net = ram.recurrence_model_ego()
+    
     return net
 
 

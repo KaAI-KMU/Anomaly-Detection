@@ -3,7 +3,7 @@ from base.base_dataset import BaseADDataset
 from base.base_net import BaseNet
 from torch.utils.data.dataloader import DataLoader
 from sklearn.metrics import roc_auc_score
-from datasets.Dataset import DATASET
+from datasets.Dataset_withego import EGO_DATASET
 
 import logging
 import time
@@ -61,7 +61,7 @@ class DeepSADTrainer_ego():
         # Initialize hypersphere center c (if c not loaded)
         if self.c is None:
             logger.info('Initializing center c...')
-            train = DATASET(self.args, 'train')
+            train = EGO_DATASET(self.args, 'train')
             train_gen = data.DataLoader(train, **self.dataloader_params)
             train_loader = tqdm(train_gen, total = len(train_gen))
             self.c = self.init_center_c(train_loader, net)
@@ -79,22 +79,22 @@ class DeepSADTrainer_ego():
             n_batches = 0
             epoch_start_time = time.time()
             for data in train_loader:
-                bbox_in, flow_in, _, bbox_out, _, cls = data #ego_in, ego_out
+                ego_in, ego_out, cls = data #ego_in, ego_out
                 
                 #cls분류 
                 # abnormal without ego일 경우 normal로 취급함. 
-                if cls == -1.0:
-                    cls = 1.0
-                elif cls == -2.0:
-                    cls = -1.0
+                if cls == -1:
+                    cls = 1
+                elif cls == -2:
+                    cls = -1
 
-                bbox_in, flow_in, cls = bbox_in.to(self.device), flow_in.to(self.device), cls.to(self.device)
+                ego_in, cls = ego_in.to(self.device), cls.to(self.device)
                 
                 # Zero the network parameter gradients
                 optimizer.zero_grad()
 
                 # Update network parameters via backpropagation: forward + backward + optimize
-                _, outputs = net(bbox_in, flow_in)
+                outputs = net(ego_in)
                 dist = torch.sum((outputs - self.c) ** 2, dim=1)
                 
                 losses = torch.where(cls == 0, dist, self.eta * ((dist + self.eps) ** cls.float()))
@@ -109,18 +109,18 @@ class DeepSADTrainer_ego():
 
             # log epoch statistics
             epoch_train_time = time.time() - epoch_start_time
-            logger.info(f'| Epoch: {epoch + 1:03}/{epochs:03} | Train Time: {epoch_train_time:.3f}s '
-                        f'| Train Loss: {epoch_loss / n_batches:.6f} |')
+            logger.info(f'| Epoch: {epoch + 1:03}/{epochs:03} | Ego Train Time: {epoch_train_time:.3f}s '
+                        f'| Ego Train Loss: {epoch_loss / n_batches:.6f} |')
 
         self.train_time = time.time() - start_time
-        logger.info('Training Time: {:.3f}s'.format(self.train_time))
+        logger.info('Ego Training Time: {:.3f}s'.format(self.train_time))
         logger.info('Finished training.')
 
         return net
 
     def test(self, net):
         logger = logging.getLogger()
-        test = DATASET(self.args, 'test')
+        test = EGO_DATASET(self.args, 'test')
         val_gen = data.DataLoader(test, **self.dataloader_params)
         # Get test data loader
         loader = tqdm(val_gen, total = len(val_gen))
@@ -137,19 +137,17 @@ class DeepSADTrainer_ego():
         net.eval()
         with torch.no_grad():
             for data in loader:
-                bbox_in, flow_in, _, bbox_out, _, cls = data
+                ego_in, ego_out, cls = data
                 
-                if cls == -1.0:
-                    cls = 1.0
-                elif cls == -2.0:
-                    cls = -1.0
+                if cls == -1:
+                    cls = 1
+                elif cls == -2:
+                    cls = -1
 
-                bbox_in = bbox_in.to(self.device)
-                flow_in = flow_in.to(self.device)
-                bbox_out = bbox_out.to(self.device)
+                ego_in = ego_in.to(self.device)
                 cls = cls.to(self.device)
                 
-                outputs = net(bbox_in, flow_in)
+                outputs = net(ego_in)
                 dist = torch.sum((outputs - self.c) ** 2, dim=1)
                 losses = torch.where(cls == 0, dist, self.eta * ((dist + self.eps) ** cls.float()))
                 loss = torch.mean(losses)
@@ -172,9 +170,9 @@ class DeepSADTrainer_ego():
         self.test_auc = roc_auc_score(labels, scores)
 
         # Log results
-        logger.info('Test Loss: {:.6f}'.format(epoch_loss / n_batches))
-        logger.info('Test AUC: {:.2f}%'.format(100. * self.test_auc))
-        logger.info('Test Time: {:.3f}s'.format(self.test_time))
+        logger.info('Ego Test Loss: {:.6f}'.format(epoch_loss / n_batches))
+        logger.info('Ego Test AUC: {:.2f}%'.format(100. * self.test_auc))
+        logger.info('Ego Test Time: {:.3f}s'.format(self.test_time))
         logger.info('Finished testing.')
 
     def init_center_c(self, train_loader: DataLoader, net: BaseNet, eps=0.1):
@@ -186,8 +184,8 @@ class DeepSADTrainer_ego():
         with torch.no_grad():
             for data in train_loader:
                 # get the inputs of the batch
-                bbox_in, flow_in, ego, _, _, _ = data
-                _, outputs= net(bbox_in, flow_in, ego)
+                ego_in, _, _ = data
+                outputs= net(ego_in)
                 n_samples += outputs.shape[0]
                 c += torch.sum(outputs, dim=0)
 

@@ -194,9 +194,9 @@ class DATASET(data.Dataset):
                     else:
                         abnormal_label = labels[start:end,:]["accident_id"]
                         if sum(abnormal_label) == 0:
-                            abnormal_label = 1.0
+                            abnormal_label = 1
                         else:
-                            abnormal_label = -1.0
+                            abnormal_label = -1
                     
                     # target_ego_motion = self.get_target(ego_motion_session, ego_start, ego_end)
                     # if input_flow.shape[0] != 16:

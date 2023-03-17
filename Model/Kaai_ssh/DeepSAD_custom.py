@@ -35,6 +35,7 @@ class DeepSAD(object):
 
         self.net_name = None
         self.net = None  # neural network phi
+        self.ego_net = None
 
         self.trainer = None
         self.optimizer_name = None
@@ -63,12 +64,14 @@ class DeepSAD(object):
             'test_time': None
         }
 
-    def set_network(self, net_name):
+    def set_network(self, net_name, ego_net_name):
         """Builds the neural network phi."""
         self.net_name = net_name
+        self.ego_net_name = ego_net_name
         self.net = build_network(net_name)
+        self.ego_net = build_network(ego_net_name)
 
-    def train(self, dataset: BaseADDataset, optimizer_name: str = 'adam', lr: float = 0.001, n_epochs: int = 50,
+    def train(self, optimizer_name: str = 'adam', lr: float = 0.001, n_epochs: int = 50,
               lr_milestones: tuple = (), batch_size: int = 128, weight_decay: float = 1e-6, device: str = 'cuda',
               n_jobs_dataloader: int = 0):
         """Trains the Deep SAD model on the training data."""
@@ -82,13 +85,13 @@ class DeepSAD(object):
                                       device=device, n_jobs_dataloader=n_jobs_dataloader)
         
         # Get the model
-        self.net = self.trainer.train(dataset, self.net)
-        self.ego_net = self.ego_trainer.train(dataset, self.net)
+        self.net = self.trainer.train(self.net)
+        self.ego_net = self.ego_trainer.train(self.ego_net)
         self.results['train_time'] = self.trainer.train_time + self.ego_trainer.train_time
         self.c = self.trainer.c.cpu().data.numpy().tolist()  # get as list
         self.c_ego = self.ego_trainer.c.cpu().data.numpy().tolist()
 
-    def test(self, dataset: BaseADDataset, device: str = 'cuda', n_jobs_dataloader: int = 0):
+    def test(self, device: str = 'cuda', n_jobs_dataloader: int = 0):
         """Tests the Deep SAD model on the test data."""
 
         if self.trainer is None:
@@ -96,8 +99,8 @@ class DeepSAD(object):
         if self.ego_trainer is None:
             self.ego_trainer = DeepSADTrainer_ego(self.c_ego, self.eta, device=device, n_jobs_dataloader=n_jobs_dataloader)
 
-        self.trainer.test(dataset, self.net)
-        self.ego_trainer.test(dataset, self.net)
+        self.trainer.test(self.net)
+        self.ego_trainer.test(self.ego_net)
 
         # Get results
         self.results['test_auc'] = self.trainer.test_auc
@@ -136,7 +139,7 @@ class DeepSAD(object):
         """Initialize the Deep SAD network weights from the encoder weights of the pretraining autoencoder."""
 
         net_dict = self.net.state_dict()
-        
+        ego_net_dict = self.ego_net.state_dict() # for ego task
 
         flow_dict = self.ae_flow.state_dict()
         bbox_dict = self.ae_bbox.state_dict()
@@ -150,13 +153,20 @@ class DeepSAD(object):
         net_dict.update(flow_dict)
         net_dict.update(bbox_dict)
         net_dict.update(ego_dict)
+        
+        ego_net_dict.update(ego_dict) # for ego task
+        
         # Load the new state_dict
         self.net.load_state_dict(net_dict)
+        
+        self.ego_net.load_state_dict(ego_net_dict) # for ego task
 
     def save_model(self, export_model, save_ae=True):
         """Save Deep SAD model to export_model."""
 
         net_dict = self.net.state_dict()
+        ego_net_dict = self.ego_net.state_dict()
+        
         flow_dict = self.ae_flow.state_dict() if save_ae else None
         bbox_dict = self.ae_bbox.state_dict() if save_ae else None
         ego_dict = self.ae_ego.state_dict() if save_ae else None
@@ -164,6 +174,7 @@ class DeepSAD(object):
         torch.save({'c': self.c,
                     'c_ego': self.c_ego,
                     'net_dict': net_dict,
+                    'ego_net_dict': ego_net_dict,
                     'flow_dict': flow_dict,
                     'bbox_dict': bbox_dict,
                     'ego_dict' : ego_dict}, export_model)
@@ -176,6 +187,7 @@ class DeepSAD(object):
         self.c = model_dict['c']
         self.c_ego = model_dict['c_ego']
         self.net.load_state_dict(model_dict['net_dict'])
+        self.ego_net.load_state_dict(model_dict['ego_net_dict'])
 
         # load autoencoder parameters if specified
         if load_ae:

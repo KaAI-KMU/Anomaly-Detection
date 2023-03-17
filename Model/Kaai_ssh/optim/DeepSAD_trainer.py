@@ -82,8 +82,8 @@ class DeepSADTrainer():
                 bbox_in, flow_in, _, bbox_out, _, cls = data #ego_in, ego_out
                 
                 # abnormal with ego 일 경우 abnormal로 취급
-                if cls == -2.0:
-                    cls = -1.0
+                #if cls == -2.0:
+                #    cls = -1.0
                 
                 bbox_in, flow_in, cls = bbox_in.to(self.device), flow_in.to(self.device), cls.to(self.device)
 
@@ -134,8 +134,8 @@ class DeepSADTrainer():
                 bbox_in, flow_in, _, bbox_out, _, cls = data
                 
                 # abnormal with ego 일 경우 abnormal로 취급
-                if cls == -2.0:
-                    cls = -1.0
+                #if cls == -2.0:
+                #    cls = -1.0
 
                 bbox_in = bbox_in.to(self.device)
                 flow_in = flow_in.to(self.device)
