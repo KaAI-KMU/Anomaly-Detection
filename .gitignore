@@ -11,3 +11,4 @@ Preprocessing/Make_Pickle/test
 *.jpg
 *.png
 *.pth
+*.pt
