@@ -7,3 +7,7 @@ Model/Kaai_ssh/media
 Preprocessing/Make_Pickle/data
 *.flo
 Preprocessing/Make_Pickle/test
+*.gif
+*.jpg
+*.png
+*.pth
