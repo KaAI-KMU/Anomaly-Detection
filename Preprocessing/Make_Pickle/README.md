@@ -13,14 +13,14 @@ C:.
 
 D:.
 └─bdd100k_40
-     ├─bbox
-     │   └─{video_name}.npy
-     ├─egos
-     │   └─{video_name}.txt
-     └─{video_name}
-            └─000001.flo
-            └─000002.flo
-            └─000003.flo
+     ├─{video_name}.npy # BBox
+     │
+     ├─{video_name}.txt # Ego Motion
+     │
+     └─flow
+        └─000001.flo
+        └─000002.flo
+        └─000003.flo
 ```
 
 It will read videos data in D drive and make one pickle file in C drive
