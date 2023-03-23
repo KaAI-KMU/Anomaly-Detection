@@ -9,8 +9,8 @@ from utils.trainer import AETrain, SADTrain, EGOTrain
 
 def main():
     start = datetime.now()
-    start = start.strftime('%Y-%m-%d %H:%M:%S')
-    result_path = f'{result_path}{start}/'
+    start = start.strftime('%Y_%m_%d_%H_%M_%S')
+    result_path = f'{RESULT_PATH}{start}/'
 
     if not os.path.isdir(result_path):
         os.mkdir(result_path)
@@ -35,8 +35,9 @@ def main():
     else:
         # AE 모델을 생성하고 학습을 한 뒤 모델을 반환
         flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(network_name)
-        pass
     
     SADTrain(flow_model, bbox_model, ego_model)
     EGOTrain(ego_model_ego_train)
     
+if __name__ == '__main__':
+    main()
