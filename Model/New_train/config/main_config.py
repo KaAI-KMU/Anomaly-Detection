@@ -1,4 +1,4 @@
-result_path = 'result/'
+RESULT_PATH = 'result/'
 network_name = 'Recurrence_1'
 pretrain_weight_path = None
 device= 'cuda'
@@ -14,7 +14,7 @@ pretrain_milestone = [50]
 pretrain_gamma = 0.1
 pretrain_criterion = 'MSE'
 
-pretrain_epoch = 100
+pretrain_epoch = 1
 
 # dataset_name = 'HEVI'
 # net_name = 'Recurrence'
