@@ -6,6 +6,7 @@ from utils.load_pretrain_argument import load_optimizer, load_multistep_lr, load
 from utils.load_dataset import dataset_loader
 import time
 from tqdm import tqdm
+import copy
 
 def AETrain(net_name):
     bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
@@ -36,7 +37,10 @@ def AETrain(net_name):
         ego_model.train()
 
         logger.info(f"Start Load Training Data")
+        loading_time = time.time()
         train_generator = dataset_loader(network_name)
+        loading_time = time.time() - loading_time
+        print(f'Loading Time :: {loading_time}')
         length = len(train_generator)
         loader = tqdm(train_generator, total = length)
 
@@ -55,23 +59,23 @@ def AETrain(net_name):
             optimizer_bbox.zero_grad()
             prediction = bbox_model(bbox_data)
             bbox_loss = criterion(prediction, bbox_data)
-            bbox_loss.backward()
+            bbox_loss.mean().backward()
             optimizer_bbox.step()
-            bbox_avg_loss += bbox_loss/length
+            bbox_avg_loss += bbox_loss.mean()/length
             # Flow Data Train
             optimizer_flow.zero_grad()
             prediction = flow_model(flow_data)
             flow_loss = criterion(prediction, flow_data)
-            flow_loss.backward()
+            flow_loss.mean().backward()
             optimizer_flow.step()
-            flow_avg_loss += flow_loss/length
+            flow_avg_loss += flow_loss.mean()/length
             # Ego Data Train
             optimizer_ego.zero_grad()
             prediction = ego_model(ego_data)
             ego_loss = criterion(prediction, ego_data)
-            ego_loss.backward()
+            ego_loss.mean().backward()
             optimizer_ego.step()
-            ego_avg_loss += ego_loss/length
+            ego_avg_loss += ego_loss.mean()/length
 
             batch_number += 1
 
@@ -85,12 +89,7 @@ def AETrain(net_name):
 
     train_time = time.time() - train_time
     logger.info(f'Pretrain Finished :: {train_time}')
-    return bbox_model, flow_model, ego_model
-    
-
-
-    
-    
+    return bbox_model, flow_model, ego_model, copy.deepcopy(ego_model)
 
 def SADTrain(flow_model, bbox_model, ego_model):
     pass
