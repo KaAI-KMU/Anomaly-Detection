@@ -3,10 +3,6 @@ network_name = 'Recurrence_1'
 pretrain_weight_path = None
 device= 'cuda'
 
-data_shuffle = True
-data_batch = 32
-num_workers = 0
-
 pretrain_optimzier = 'Adam'
 pretrain_lr = 0.001
 pretrain_weight_decay = 1e-6
