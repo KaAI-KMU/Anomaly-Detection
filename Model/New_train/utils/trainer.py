@@ -1,14 +1,16 @@
 import torch
 from model.network_builder import network_builder
 import logging
-from config.main_config import *
+from config.train_config import *
+from config.main_config import device, network_name
 from utils.load_pretrain_argument import load_optimizer, load_multistep_lr, load_criterion
 from utils.load_dataset import dataset_loader
 import time
 from tqdm import tqdm
 import copy
+import os
 
-def AETrain(net_name):
+def AETrain(net_name, result_path):
     bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
     logger = logging.getLogger()
     logger.info(f'Pretrain Start ::\t{net_name}')
@@ -88,11 +90,33 @@ def AETrain(net_name):
                     f'BBox loss :: {bbox_avg_loss} Flos loss :: {flow_avg_loss} Ego Loss :: {ego_avg_loss}')
 
     train_time = time.time() - train_time
-    logger.info(f'Pretrain Finished :: {train_time}')
+    logger.info(f'Pretrain Finished ::\t{train_time}')
+
+    # 저장하기
+    if not os.path.isdir(f'{result_path}pretrain/'):
+        os.mkdir(f'{result_path}pretrain/')
+    
+    torch.save(bbox_model.state_dict(), f'{result_path}pretrain/bbox.pt')
+    torch.save(flow_model.state_dict(), f'{result_path}pretrain/flow.pt')
+    torch.save(ego_model.state_dict(), f'{result_path}pretrain/ego.pt')
+    logger.info(f'Pretrain Weight Saved ::\tf{result_path}pretrain')
+
+    bbox_model.to('cpu')
+    flow_model.to('cpu')
+    ego_model.to('cpu')
     return bbox_model, flow_model, ego_model, copy.deepcopy(ego_model)
 
-def SADTrain(flow_model, bbox_model, ego_model):
-    pass
+def SADTrain(other_model, net_name):
+    """
+    1. 모델 gpu 이동
+    2. 데이터 로더 불러오기 -> for_train 필요
+    3. optimizer, scheduler 불러오기
+    4. c 정보 모델에서 뽑기
+    5. 자체 loss 수행
+    6. 
+    """
+    logger = logging.getLogger()
+    logger.info(f'Train Start ::\t{net_name}')
 
 def EGOTrain(ego_model):
     pass
