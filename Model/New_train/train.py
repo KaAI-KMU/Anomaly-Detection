@@ -6,6 +6,7 @@ from config.main_config import *
 from datetime import datetime
 from utils.load_model import Load_model
 from utils.trainer import AETrain, SADTrain, EGOTrain
+from utils.init_model import init_weight
 
 def main():
     start = datetime.now()
@@ -29,15 +30,19 @@ def main():
     if not torch.cuda.is_available():
         device = 'cpu'
     
+    # 모델들은 CPU에 위치
     if pretrain_weight_path:
         # 모델을 생성하고 가중치를 업로드 한 뒤 모델을 반환
         flow_model, bbox_model, ego_model, ego_model_ego_train = Load_model(pretrain_weight_path, network_name)
     else:
         # AE 모델을 생성하고 학습을 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(network_name)
+        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(network_name, result_path)
+        other_model, ego_model = init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, network_name)
     
-    SADTrain(flow_model, bbox_model, ego_model)
-    EGOTrain(ego_model_ego_train)
+    network_name = f'{network_name}_SAD'
+
+    SADTrain(other_model, network_name)
+    EGOTrain(ego_model)
     
 if __name__ == '__main__':
     main()
