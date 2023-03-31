@@ -16,3 +16,4 @@ train_milestone = [50]
 train_gamma = 0.1
 
 train_epoch = 100
+eta = 1.0
