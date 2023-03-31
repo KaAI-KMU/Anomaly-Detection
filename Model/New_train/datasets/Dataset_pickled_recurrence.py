@@ -117,8 +117,8 @@ class Recurrence_SAD_EGO_DATASET(data.Dataset):
         return len(self.all_inputs)
     
     def __getitem__(self, index):
-        input_ego_motion, video_name, label, frame_id= self.all_inputs[index]
+        input_ego_motion, video_name, label= self.all_inputs[index]
         input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
 
-        return input_ego_motion, video_name, label, frame_id
+        return input_ego_motion, video_name, label
     
