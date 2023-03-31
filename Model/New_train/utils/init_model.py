@@ -4,6 +4,7 @@ from utils.load_dataset import dataset_loader
 from tqdm import tqdm
 from config.model_config import feature_space
 import logging
+
 def init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name):
     net_name = f'{net_name}_SAD'
 
