@@ -3,7 +3,7 @@ data_length = 16
 stride = 1
 
 data_shuffle = True
-data_batch = 32
+data_batch = 256
 num_workers = 0
 
 flow_eps = [0.01, 0.009]
