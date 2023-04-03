@@ -18,7 +18,7 @@ class Recurrence_Pretrain_DATASET(data.Dataset):
             args: arguments passed from main file
             phase: 'train' or 'val'
         '''
-        self.data_root = f'{data_root}train/bdd/'
+        self.data_root = f'{data_root}train/test/'
         self.data_name = os.listdir(self.data_root)
 
         self.all_inputs = []
