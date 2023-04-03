@@ -13,7 +13,7 @@ import os
 def AETrain(net_name, result_path):
     bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
     logger = logging.getLogger()
-    logger.info(f'Pretrain Start ::\t{net_name}')
+    logger.info(f'Pretrain Start\t::\t{net_name}')
 
     optimizer_bbox = load_pretrain_optimizer(bbox_model.parameters())
     scheduler_bbox = load_pretrain_multistep_lr(optimizer_bbox)
@@ -35,17 +35,17 @@ def AETrain(net_name, result_path):
     train_time = time.time()
     train_generator = dataset_loader(network_name)
     length = len(train_generator)
-    logger.info(f'Pretrain Training Data Length :: {length}')
-    logger.info(f'Pretrain Training Epoch :: {pretrain_epoch}')
+    logger.info(f'Pretrain Training Data Length\t::\t{length}')
+    logger.info(f'Pretrain Training Epoch\t::\t{pretrain_epoch}')
     for epoch in range(pretrain_epoch):
         bbox_model.train()
         flow_model.train()
         ego_model.train()
 
-        
+        #logger.info(f"Pretrain Start\t::\t{epoch+1} epoch")
         loader = tqdm(train_generator, total = length)
 
-        logger.info(f"Pretrain Start :: {epoch+1} epoch")
+        
         batch_number = 0
         epoch_time = time.time()
         
@@ -85,11 +85,11 @@ def AETrain(net_name, result_path):
         scheduler_ego.step()
 
         epoch_time = time.time() - epoch_time
-        logger.info(f'Pretrain AutoEncoder :: {epoch+1}/{pretrain_epoch} :: Train Time :: {epoch_time:.3f}s '
-                    f'BBox loss :: {bbox_avg_loss/batch_number:6.f} Flos loss :: {flow_avg_loss/batch_number:6.f} Ego Loss :: {ego_avg_loss/batch_number:6.f}')
+        logger.info(f'Pretrain AutoEncoder\t::\t{epoch+1}/{pretrain_epoch} :: Train Time :: {epoch_time:.3f}s '
+                    f'BBox loss :: {bbox_avg_loss/batch_number:.6f} Flos loss :: {flow_avg_loss/batch_number:.6f} Ego Loss :: {ego_avg_loss/batch_number:.6f}')
 
     train_time = time.time() - train_time
-    logger.info(f'Pretrain Finished ::\t{train_time}')
+    logger.info(f'Pretrain Finished\t::\t{train_time}')
 
     # 저장하기
     if not os.path.isdir(f'{result_path}pretrain/'):
@@ -98,7 +98,7 @@ def AETrain(net_name, result_path):
     torch.save(bbox_model.state_dict(), f'{result_path}pretrain/bbox.pt')
     torch.save(flow_model.state_dict(), f'{result_path}pretrain/flow.pt')
     torch.save(ego_model.state_dict(), f'{result_path}pretrain/ego.pt')
-    logger.info(f'Pretrain Weight Saved ::\tf{result_path}pretrain')
+    logger.info(f'Pretrain Weight Saved\t::\t{result_path}pretrain')
 
     bbox_model.to('cpu')
     flow_model.to('cpu')
@@ -120,7 +120,7 @@ def SADTrain(other_model, net_name):
         device = 'cpu'
     other_model.to(device)
 
-    optimizer_SAD = load_train_optimizer(other_model.parameters(), SAD = True)
+    optimizer_SAD = load_train_optimizer(other_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
     
     start_time = time.time()
@@ -134,7 +134,7 @@ def SADTrain(other_model, net_name):
     logger.info(f'SAD Training Data Length :: {length}')
     logger.info(f'SAD Training Epoch :: {train_epoch}')
     for epoch in range(train_epoch):
-        schedular_SAD.step()
+        
         epoch_loss = 0.0
         n_batch = 0
         epoch_time = time.time()
@@ -142,11 +142,13 @@ def SADTrain(other_model, net_name):
 
         for data in loader:
             bbox, flow, ego, _, label, _ = data
-            label.to(device)
+            label = torch.unsqueeze(label, axis = -1)
+            label = label.to(device)
 
             optimizer_SAD.zero_grad()
             result = other_model(bbox, flow, ego)
-            distance = torch.sum((result - center) ** 2, dim = 1)
+            distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
+
             loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
             loss = torch.mean(loss)
             loss.backward()
@@ -154,12 +156,15 @@ def SADTrain(other_model, net_name):
 
             epoch_loss += loss.item()
             n_batch += 1
+        schedular_SAD.step()
         epoch_time = time.time() - epoch_time
-        logger.info(f'Train SAD :: {epoch+1}/{pretrain_epoch} :: Train Time :: {epoch_time:.3f}s '
+        logger.info(f'Train SAD :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
     start_time = time.time() - start_time
     logger.info(f'SAD Training Time :: {start_time:.3f}s')
     logger.info('SAD Training Finish')
+
+    return other_model
 
             
 def EGOTrain(ego_model, net_name):
@@ -170,7 +175,7 @@ def EGOTrain(ego_model, net_name):
         device = 'cpu'
     ego_model.to(device)
 
-    optimizer_SAD = load_train_optimizer(ego_model.parameters(), SAD = True)
+    optimizer_SAD = load_train_optimizer(ego_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
     
     start_time = time.time()
@@ -183,7 +188,7 @@ def EGOTrain(ego_model, net_name):
     logger.info(f'SAD_EGO Training Data Length :: {length}')
     logger.info(f'SAD_EGO Training Epoch :: {train_epoch}')
     for epoch in range(train_epoch):
-        schedular_SAD.step()
+        
         epoch_loss = 0.0
         n_batch = 0
         epoch_time = time.time()
@@ -191,11 +196,12 @@ def EGOTrain(ego_model, net_name):
 
         for data in loader:
             ego, _, label = data
-            label.to(device)
+            label = torch.unsqueeze(label, axis = -1)
+            label = label.to(device)
 
             optimizer_SAD.zero_grad()
             result = ego_model(ego)
-            distance = torch.sum((result - center) ** 2, dim = 1)
+            distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
             loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
             loss = torch.mean(loss)
             loss.backward()
@@ -203,9 +209,12 @@ def EGOTrain(ego_model, net_name):
 
             epoch_loss += loss.item()
             n_batch += 1
+        schedular_SAD.step()
         epoch_time = time.time() - epoch_time
-        logger.info(f'Train SAD_EGO :: {epoch+1}/{pretrain_epoch} :: Train Time :: {epoch_time:.3f}s '
+        logger.info(f'Train SAD_EGO :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
     start_time = time.time() - start_time
     logger.info(f'SAD_EGO Training Time :: {start_time:.3f}s')
     logger.info('SAD_EGO Training Finish')
+
+    return ego_model
