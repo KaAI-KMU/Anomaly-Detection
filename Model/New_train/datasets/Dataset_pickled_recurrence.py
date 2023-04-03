@@ -39,9 +39,9 @@ class Recurrence_Pretrain_DATASET(data.Dataset):
     
     def __getitem__(self, index):
         input_bbox, input_flow, input_ego_motion= self.all_inputs[index]
-        input_bbox = torch.FloatTensor(input_bbox).to(device)
-        input_flow = torch.FloatTensor(input_flow).to(device)
-        input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
+        input_bbox = torch.FloatTensor(input_bbox/255).to(device)
+        input_flow = torch.FloatTensor(input_flow/255).to(device)
+        input_ego_motion = torch.FloatTensor(input_ego_motion/255).to(device)
 
         return input_bbox, input_flow, input_ego_motion
     
@@ -79,9 +79,9 @@ class Recurrence_SAD_DATASET(data.Dataset):
     
     def __getitem__(self, index):
         input_bbox, input_flow, input_ego_motion, video_name, label, frame_id= self.all_inputs[index]
-        input_bbox = torch.FloatTensor(input_bbox).to(device)
-        input_flow = torch.FloatTensor(input_flow).to(device)
-        input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
+        input_bbox = torch.FloatTensor(input_bbox/255).to(device)
+        input_flow = torch.FloatTensor(input_flow/255).to(device)
+        input_ego_motion = torch.FloatTensor(input_ego_motion/255).to(device)
         frame_id = torch.IntTensor(frame_id)
 
         return input_bbox, input_flow, input_ego_motion, video_name, label, frame_id
@@ -118,7 +118,7 @@ class Recurrence_SAD_EGO_DATASET(data.Dataset):
     
     def __getitem__(self, index):
         input_ego_motion, video_name, label= self.all_inputs[index]
-        input_ego_motion = torch.FloatTensor(input_ego_motion).to(device)
+        input_ego_motion = torch.FloatTensor(input_ego_motion/255).to(device)
 
         return input_ego_motion, video_name, label
     
