@@ -95,9 +95,9 @@ def AETrain(net_name, result_path):
     if not os.path.isdir(f'{result_path}pretrain/'):
         os.mkdir(f'{result_path}pretrain/')
     
-    torch.save(bbox_model.state_dict(), f'{result_path}pretrain/bbox.pt')
-    torch.save(flow_model.state_dict(), f'{result_path}pretrain/flow.pt')
-    torch.save(ego_model.state_dict(), f'{result_path}pretrain/ego.pt')
+    torch.save(bbox_model, f'{result_path}pretrain/bbox.pt')
+    torch.save(flow_model, f'{result_path}pretrain/flow.pt')
+    torch.save(ego_model, f'{result_path}pretrain/ego.pt')
     logger.info(f'Pretrain Weight Saved\t::\t{result_path}pretrain')
 
     bbox_model.to('cpu')

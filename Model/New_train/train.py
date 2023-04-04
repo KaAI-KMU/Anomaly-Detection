@@ -47,8 +47,8 @@ def main():
     ego_model = EGOTrain(ego_model, net_name)
 
     # 저장하기
-    torch.save(other_model.state_dict(), f'{result_path}other_model.pt')
-    torch.save(ego_model.state_dict(), f'{result_path}ego_model.pt')
+    torch.save(other_model, f'{result_path}other_model.pt')
+    torch.save(ego_model, f'{result_path}ego_model.pt')
     logger.info(f'Train Weight Saved\t::\t{result_path}')
 
     
