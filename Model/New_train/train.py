@@ -28,9 +28,6 @@ def main():
     logger.addHandler(file_handler)
 
     logger.info(f'Network Name :: {net_name}')
-
-    if not torch.cuda.is_available():
-        device = 'cpu'
     
     # 모델들은 CPU에 위치
     if pretrain_weight_path:
