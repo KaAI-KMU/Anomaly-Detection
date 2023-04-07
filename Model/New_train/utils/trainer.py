@@ -5,6 +5,7 @@ from config.train_config import *
 from config.main_config import device, network_name
 from utils.load_train_argument import load_pretrain_optimizer, load_pretrain_multistep_lr, load_criterion, load_train_optimizer, load_train_multistep_lr
 from utils.load_dataset import dataset_loader
+from utils.callback_function import best_weight_callback
 import time
 from tqdm import tqdm
 import copy
@@ -17,12 +18,15 @@ def AETrain(net_name, result_path):
 
     optimizer_bbox = load_pretrain_optimizer(bbox_model.parameters())
     scheduler_bbox = load_pretrain_multistep_lr(optimizer_bbox)
+    callback_bbox = best_weight_callback(name='BBox')
 
     optimizer_flow = load_pretrain_optimizer(flow_model.parameters())
     scheduler_flow = load_pretrain_multistep_lr(optimizer_flow)
+    callback_flow = best_weight_callback(name = 'Flow')
 
     optimizer_ego = load_pretrain_optimizer(ego_model.parameters())
     scheduler_ego = load_pretrain_multistep_lr(optimizer_ego)
+    callback_ego = best_weight_callback(name = 'Ego')
 
     criterion = load_criterion()
 
@@ -107,6 +111,7 @@ def AETrain(net_name, result_path):
         with torch.no_grad():
             for data in loader_val:
                 bbox_data, flow_data, ego_data = data
+
                 prediction = bbox_model(bbox_data)
                 bbox_loss = criterion(prediction, bbox_data)
                 bbox_avg_loss += bbox_loss.mean()
@@ -120,6 +125,7 @@ def AETrain(net_name, result_path):
                 ego_avg_loss += ego_loss.mean()
 
                 batch_number += bbox_data.shape[0]
+
         epoch_time = time.time() - epoch_time
         logger.info(f'Pretrain AutoEncoder Validation\t::\t{epoch+1}/{pretrain_epoch} :: Validation Time :: {epoch_time:.3f}s '
                     f'BBox loss :: {bbox_avg_loss/batch_number:.6f} Flos loss :: {flow_avg_loss/batch_number:.6f} Ego Loss :: {ego_avg_loss/batch_number:.6f}')
@@ -129,10 +135,16 @@ def AETrain(net_name, result_path):
         # 각 task별로 loss 계산한 다음에 validation loss가 이전보다 낮다면 해당 모델의 weight를 dictionary 타입으로 저장
         # 나중에 pretrained weight를 저장할 때 해당 dictioanry type weight을 load_state_dict를 통해서 업로드 한 다음에 모델을 저장
         ###############################################
-
+        callback_bbox.add(bbox_model, bbox_avg_loss/batch_number)
+        callback_flow.add(flow_model, flow_avg_loss/batch_number)
+        callback_ego.add(ego_model, ego_avg_loss/batch_number)
 
     train_time = time.time() - train_time
     logger.info(f'Pretrain Finished\t::\t{train_time}')
+    # Get Best model
+    bbox_model = callback_bbox.get_best_model(bbox_model)
+    flow_model = callback_flow.get_best_model(flow_model)
+    ego_model = callback_ego.get_best_model(ego_model)
 
     # 저장하기
     if not os.path.isdir(f'{result_path}pretrain/'):
@@ -165,6 +177,7 @@ def SADTrain(other_model, net_name):
 
     optimizer_SAD = load_train_optimizer(other_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
+    callback_SAD = best_weight_callback(name = 'Other')
     
     start_time = time.time()
     
@@ -232,12 +245,14 @@ def SADTrain(other_model, net_name):
                     f'loss :: {epoch_loss / n_batch:.6f}')
         
         ######################################################################
-        # 이하 동일
+        callback_SAD.add(other_model, epoch_loss / n_batch)
 
 
     start_time = time.time() - start_time
     logger.info(f'SAD Training Time :: {start_time:.3f}s')
     logger.info('SAD Training Finish')
+
+    other_model = callback_SAD.get_best_model(other_model)
 
     return other_model
 
@@ -252,6 +267,7 @@ def EGOTrain(ego_model, net_name):
 
     optimizer_SAD = load_train_optimizer(ego_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
+    callback_SAD = best_weight_callback(name = 'Ego')
     
     start_time = time.time()
     
@@ -315,11 +331,14 @@ def EGOTrain(ego_model, net_name):
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD_EGO :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
+        callback_SAD.add(ego_model, epoch_loss / n_batch)
 
 
 
     start_time = time.time() - start_time
     logger.info(f'SAD_EGO Training Time :: {start_time:.3f}s')
     logger.info('SAD_EGO Training Finish')
+
+    ego_model = callback_SAD.get_best_model(ego_model)
 
     return ego_model
