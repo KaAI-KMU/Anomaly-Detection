@@ -54,9 +54,11 @@ def init_center_c(SAD_other, SAD_ego, net_name, eps = 0.1):
     logger = logging.getLogger()
     logger.info(f'Start Initializing C point ::\t{net_name}')
 
-    train_generator = dataset_loader(net_name)
+    train_generator = dataset_loader(net_name, purpose = 'Init')
     length = len(train_generator)
     loader = tqdm(train_generator, total = length)
+
+    logger.info(f'Initializing Data Length ::\t{length}')
 
     device = 'cuda'
     if not torch.cuda.is_available():
