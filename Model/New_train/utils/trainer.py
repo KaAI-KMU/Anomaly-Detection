@@ -18,15 +18,15 @@ def AETrain(net_name, result_path):
 
     optimizer_bbox = load_pretrain_optimizer(bbox_model.parameters())
     scheduler_bbox = load_pretrain_multistep_lr(optimizer_bbox)
-    callback_bbox = best_weight_callback(name='BBox')
+    callback_bbox = best_weight_callback(name='BBox', center = False)
 
     optimizer_flow = load_pretrain_optimizer(flow_model.parameters())
     scheduler_flow = load_pretrain_multistep_lr(optimizer_flow)
-    callback_flow = best_weight_callback(name = 'Flow')
+    callback_flow = best_weight_callback(name = 'Flow', center = False)
 
     optimizer_ego = load_pretrain_optimizer(ego_model.parameters())
     scheduler_ego = load_pretrain_multistep_lr(optimizer_ego)
-    callback_ego = best_weight_callback(name = 'Ego')
+    callback_ego = best_weight_callback(name = 'Ego', center = False)
 
     criterion = load_criterion()
 
@@ -177,7 +177,7 @@ def SADTrain(other_model, net_name):
 
     optimizer_SAD = load_train_optimizer(other_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
-    callback_SAD = best_weight_callback(name = 'Other')
+    callback_SAD = best_weight_callback(name = 'Other', center = True)
     
     start_time = time.time()
     
@@ -207,9 +207,9 @@ def SADTrain(other_model, net_name):
 
             optimizer_SAD.zero_grad()
             result = other_model(bbox, flow, ego)
-            distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
+            distance = torch.sum((result.squeeze() - center) ** 2, dim = 1) # l1 loss
 
-            loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
+            loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
             loss = torch.mean(loss)
             loss.backward()
             optimizer_SAD.step()
@@ -267,7 +267,7 @@ def EGOTrain(ego_model, net_name):
 
     optimizer_SAD = load_train_optimizer(ego_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
-    callback_SAD = best_weight_callback(name = 'Ego')
+    callback_SAD = best_weight_callback(name = 'Ego', center = True)
     
     start_time = time.time()
     
@@ -290,13 +290,13 @@ def EGOTrain(ego_model, net_name):
         epoch_time = time.time()
 
         for data in loader:
-            ego, _, label = data
+            ego, _, label = data # data, frame_id, label
             label = torch.unsqueeze(label, axis = -1)
             label = label.to(device)
 
             optimizer_SAD.zero_grad()
             result = ego_model(ego)
-            distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
+            distance = torch.sum((result.squeeze() - center) ** 2, dim = 1)
             loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
             loss = torch.mean(loss)
             loss.backward()
@@ -320,6 +320,7 @@ def EGOTrain(ego_model, net_name):
         with torch.no_grad():
             for data in loader_val:
                 ego, _, label = data
+                label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
                 result = ego_model(ego)
                 distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
