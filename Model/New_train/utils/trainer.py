@@ -18,6 +18,7 @@ def AETrain(net_name, result_path):
 
     optimizer_bbox = load_pretrain_optimizer(bbox_model.parameters())
     scheduler_bbox = load_pretrain_multistep_lr(optimizer_bbox)
+
     callback_bbox = best_weight_callback(name='BBox', center = False)
 
     optimizer_flow = load_pretrain_optimizer(flow_model.parameters())
@@ -177,7 +178,8 @@ def SADTrain(other_model, net_name):
 
     optimizer_SAD = load_train_optimizer(other_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
-    callback_SAD = best_weight_callback(name = 'Other', center = True)
+    if CALLBACK:
+        callback_SAD = best_weight_callback(name = 'Other', center = True)
     
     start_time = time.time()
     
@@ -233,7 +235,7 @@ def SADTrain(other_model, net_name):
                 label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
                 result = other_model(bbox, flow, ego)
-                distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
+                distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
 
                 loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
                 loss = torch.mean(loss)
@@ -245,14 +247,15 @@ def SADTrain(other_model, net_name):
                     f'loss :: {epoch_loss / n_batch:.6f}')
         
         ######################################################################
-        callback_SAD.add(other_model, epoch_loss / n_batch)
+        if CALLBACK:
+            callback_SAD.add(other_model, epoch_loss / n_batch)
 
 
     start_time = time.time() - start_time
     logger.info(f'SAD Training Time :: {start_time:.3f}s')
     logger.info('SAD Training Finish')
-
-    other_model = callback_SAD.get_best_model(other_model)
+    if CALLBACK:
+        other_model = callback_SAD.get_best_model(other_model)
 
     return other_model
 
@@ -267,7 +270,8 @@ def EGOTrain(ego_model, net_name):
 
     optimizer_SAD = load_train_optimizer(ego_model.parameters())
     schedular_SAD = load_train_multistep_lr(optimizer_SAD)
-    callback_SAD = best_weight_callback(name = 'Ego', center = True)
+    if CALLBACK:
+        callback_SAD = best_weight_callback(name = 'Ego', center = True)
     
     start_time = time.time()
     
@@ -323,7 +327,7 @@ def EGOTrain(ego_model, net_name):
                 label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
                 result = ego_model(ego)
-                distance = torch.sum((result - center) ** 2, dim = 1).squeeze()
+                distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
                 loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
                 loss = torch.mean(loss)
                 epoch_loss += loss.item()
@@ -332,14 +336,15 @@ def EGOTrain(ego_model, net_name):
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD_EGO :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
-        callback_SAD.add(ego_model, epoch_loss / n_batch)
+        if CALLBACK:
+            callback_SAD.add(ego_model, epoch_loss / n_batch)
 
 
 
     start_time = time.time() - start_time
     logger.info(f'SAD_EGO Training Time :: {start_time:.3f}s')
     logger.info('SAD_EGO Training Finish')
-
-    ego_model = callback_SAD.get_best_model(ego_model)
+    if CALLBACK:
+        ego_model = callback_SAD.get_best_model(ego_model)
 
     return ego_model
