@@ -3,6 +3,7 @@ import logging
 import random
 import os
 from config.main_config import *
+from config.train_config import *
 from datetime import datetime
 from utils.load_model import Load_model
 from utils.trainer import AETrain, SADTrain, EGOTrain
@@ -28,6 +29,22 @@ def main():
     logger.addHandler(file_handler)
 
     logger.info(f'Network Name :: {net_name}')
+    logger.info(f'Pretrain learning rate :: {pretrain_lr}')
+    logger.info(f'Pretrain Optimizer :: {pretrain_optimzier}')
+    logger.info(f'Pretrain weight decay :: {pretrain_weight_decay}')
+    logger.info(f'Pretrain milestone :: {pretrain_milestone}')
+    logger.info(f'Pretrain gamma :: {pretrain_gamma}')
+    logger.info(f'Pretrain criterion :: {pretrain_criterion}')
+    logger.info(f'Pretrain epoch :: {pretrain_epoch}')
+
+    logger.info(f'Train optimizer :: {train_optimizer}')
+    logger.info(f'Train learning rate :: {train_lr}')
+    logger.info(f'Train weight decay :: {train_weight_decay}')
+    logger.info(f'Train milestone :: {train_milestone}')
+    logger.info(f'Train gamma :: {train_gamma}')
+    logger.info(f'Train epoch :: {train_epoch}')
+    logger.info(f'Eta :: {eta}')
+    logger.info(f'Callback :: {CALLBACK}')
     
     # 모델들은 CPU에 위치
     if pretrain_weight_path:
