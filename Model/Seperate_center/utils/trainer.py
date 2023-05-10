@@ -195,7 +195,10 @@ def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
     start_time = time.time()
     train_generator, validation_generator = dataset_loader(net_name=net_name, state = 'SAD')
 
-    center = other_model.c
+    bbox_c = bbox_model.c
+    flow_c = flow_model.c
+    ego_c = ego_model.c
+    
 
     length = len(train_generator)
     length_val = len(validation_generator)
@@ -229,25 +232,33 @@ def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
             result_flow = flow_model(flow)
             result_ego = ego_model(ego)
 
-            distance_bbox = torch.sum((result_bbox.squeeze() - center) ** 2, dim = 1) # l1 loss
-            distance_flow = torch.sum((result_flow.squeeze() - center) ** 2, dim = 1) # l1 loss
-            distance_ego = torch.sum((result_ego.squeeze() - center) ** 2, dim = 1) # l1 loss
 
-            loss_bbox = torch.where(label == 0, distance_bbox, eta * ((distance_bbox + 1e-6) ** (-1.0)))
-            loss_ego = torch.where(label == 0, distance_ego, eta * ((distance_ego + 1e-6) ** (-1.0)))
-            loss_flow = torch.where(label == 0, distance_flow, eta * ((distance_flow + 1e-6) ** (-1.0)))
-            
+
+            distance_bbox = torch.sum((result_bbox.squeeze() - bbox_c) ** 2, dim = 1) # l1 loss
+            distance_flow = torch.sum((result_flow.squeeze() - flow_c) ** 2, dim = 1) # l1 loss
+            distance_ego = torch.sum((result_ego.squeeze() - ego_c) ** 2, dim = 1) # l1 loss
+
+
+            loss_bbox = torch.zeros(bbox.shape[0]).to(device)
+            loss_flow = torch.zeros(bbox.shape[0]).to(device)
+            loss_ego = torch.zeros(bbox.shape[0]).to(device)
+
+            for i in range(bbox.shape[0]):
+                loss_bbox[i] = torch.where(label[i] == 0, distance_bbox[i], eta * ((distance_bbox[i] + 1e-6) ** (-1.0)))
+                loss_flow[i] = torch.where(label[i] == 0, distance_flow[i], eta * ((distance_flow[i] + 1e-6) ** (-1.0)))
+                loss_ego[i] = torch.where(label[i] == 0, distance_ego[i], eta * ((distance_ego[i] + 1e-6) ** (-1.0)))
+
             loss_bbox = torch.mean(loss_bbox)
-            loss_bbox.backward()
-            optimizer_flow.step()
-
-            loss_ego = torch.mean(loss_ego)
-            loss_ego.backward()
-            optimizer_ego.step()
-
             loss_flow = torch.mean(loss_flow)
+            loss_ego = torch.mean(loss_ego)
+
+            loss_bbox.backward()
             loss_flow.backward()
+            loss_ego.backward()
+
             optimizer_flow.step()
+            optimizer_bbox.step()
+            optimizer_ego.step()
 
             n_batch += bbox.shape[0]
             epoch_bbox_loss += loss_bbox.item()
@@ -257,9 +268,10 @@ def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
         schedular_flow.step()
         schedular_bbox.step()
         schedular_ego.step()
+
         epoch_time = time.time() - epoch_time
         logger.info(f'Train SAD :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
-                    f'BBox :: {epoch_bbox_loss.mean() / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
+                    f'BBox :: {epoch_bbox_loss / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
         
         loader_val = tqdm(validation_generator, total = length_val)
 
@@ -283,9 +295,9 @@ def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
                 result_flow = flow_model(flow)
                 result_ego = ego_model(ego)
 
-                distance_bbox = torch.sum((result_bbox.squeeze() - center) ** 2, dim = 1) # l1 loss
-                distance_flow = torch.sum((result_flow.squeeze() - center) ** 2, dim = 1) # l1 loss
-                distance_ego = torch.sum((result_ego.squeeze() - center) ** 2, dim = 1) # l1 loss
+                distance_bbox = torch.sum((result_bbox.squeeze() - bbox_c) ** 2, dim = 1) # l1 loss
+                distance_flow = torch.sum((result_flow.squeeze() - flow_c) ** 2, dim = 1) # l1 loss
+                distance_ego = torch.sum((result_ego.squeeze() - ego_c) ** 2, dim = 1) # l1 loss
 
                 loss_bbox = torch.where(label == 0, distance_bbox, eta * ((distance_bbox + 1e-6) ** (-1.0)))
                 loss_ego = torch.where(label == 0, distance_ego, eta * ((distance_ego + 1e-6) ** (-1.0)))
@@ -306,7 +318,7 @@ def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
                 n_batch += bbox.shape[0]
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD :: {epoch+1}/{train_epoch} :: Validation Time :: {epoch_time:.3f}s '
-                    f'BBox :: {epoch_bbox_loss.mean() / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
+                    f'BBox :: {epoch_bbox_loss / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
         
         ######################################################################
         if CALLBACK:
