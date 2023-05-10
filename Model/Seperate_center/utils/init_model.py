@@ -18,7 +18,7 @@ def init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name
     bbox_SAD_dict = bbox_SAD.state_dict()
     flow_SAD_dict = flow_SAD.state_dict()
     ego_SAD_dict = ego_SAD.state_dict()
-    ego_only_SAD_dict = ego_only_SAD.state()
+    ego_only_SAD_dict = ego_only_SAD.state_dict()
 
     # Pretrained AutoEncoder weight
     flow_model_dict = flow_model.state_dict()
@@ -60,9 +60,9 @@ def init_center_c(bbox_SAD, flow_SAD, ego_SAD, ego_only_SAD, net_name, feature, 
 
     train_generator = dataset_loader(net_name, purpose = 'Init')
     length = len(train_generator)
-    loader = tqdm(train_generator, total = length)
 
     logger.info(f'Initializing Data Length ::\t{length}')
+    loader = tqdm(train_generator, total = length)
 
     device = 'cuda'
     if not torch.cuda.is_available():
@@ -106,10 +106,10 @@ def init_center_c(bbox_SAD, flow_SAD, ego_SAD, ego_only_SAD, net_name, feature, 
     c_ego_only /= n_samples
     
 
-    c_bbox[(abs(c_bbox) < eps) & (c_bbox < 0)] = -eps
-    c_flow[(abs(c_flow) < eps) & (c_flow < 0)] = -eps
-    c_ego[(abs(c_ego) < eps) & (c_ego < 0)] = -eps
-    c_ego_only[(abs(c_ego_only) < eps) & (c_ego_only < 0)] = -eps
+    #c_bbox[(abs(c_bbox) < eps) & (c_bbox < 0)] = -eps
+    #c_flow[(abs(c_flow) < eps) & (c_flow < 0)] = -eps
+    #c_ego[(abs(c_ego) < eps) & (c_ego < 0)] = -eps
+    #c_ego_only[(abs(c_ego_only) < eps) & (c_ego_only < 0)] = -eps
 
     
     return c_bbox, c_flow, c_ego, c_ego_only
