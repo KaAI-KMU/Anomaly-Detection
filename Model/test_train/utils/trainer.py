@@ -1,7 +1,7 @@
 import torch
 from model.network_builder import network_builder
 import logging
-from config.train_config import *
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from config.main_config import device, network_name
 from utils.load_train_argument import load_pretrain_optimizer, load_pretrain_multistep_lr, load_criterion, load_train_optimizer, load_train_multistep_lr
 from utils.load_dataset import dataset_loader
@@ -11,8 +11,9 @@ from tqdm import tqdm
 import copy
 import os
 
-def AETrain(net_name, result_path):
-    bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
+
+def AETrain(net_name, result_path, CALLBACK, feature):
+    bbox_model, flow_model, ego_model = network_builder(net_name, feature, ego_only = False)
     logger = logging.getLogger()
     logger.info(f'Pretrain Start\t::\t{net_name}')
 
@@ -161,7 +162,7 @@ def AETrain(net_name, result_path):
     ego_model.to('cpu')
     return bbox_model, flow_model, ego_model, copy.deepcopy(ego_model)
 
-def SADTrain(other_model, net_name):
+def SADTrain(other_model, net_name, CALLBACK):
     """
     1. 모델 gpu 이동
     2. 데이터 로더 불러오기 -> for_train 필요
@@ -211,7 +212,10 @@ def SADTrain(other_model, net_name):
             result = other_model(bbox, flow, ego)
             distance = torch.sum((result.squeeze() - center) ** 2, dim = 1) # l1 loss
 
-            loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
+            loss = torch.zeros(bbox.shape[0]).to(device)
+            for i in range(bbox.shape[0]):
+                loss[i] = torch.where(label[i] == 0, distance[i], eta * ((distance[i] + 1e-6) ** (-1.0)))
+            #loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
             loss = torch.mean(loss)
             loss.backward()
             optimizer_SAD.step()
@@ -225,6 +229,8 @@ def SADTrain(other_model, net_name):
         
         loader_val = tqdm(validation_generator, total = length_val)
 
+        tt, tf, ff, ft = 0,0,0,0
+
         other_model.eval()
         epoch_loss = 0.0
         n_batch = 0
@@ -237,14 +243,27 @@ def SADTrain(other_model, net_name):
                 result = other_model(bbox, flow, ego)
                 distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
 
-                loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
-                loss = torch.mean(loss)
+                for i in range(bbox.shape[0]):
+                    if label[i] == 0 and distance[i] < 1:
+                        tt += 1
+                    elif label[i] == 0 and distance[i] >= 1:
+                        tf += 1
+                    elif label[i] == 1 and distance[i] >= 1:
+                        ff += 1
+                    elif label[i] == 1 and distance[i] < 1:
+                        ft += 1
 
+                loss = torch.zeros(bbox.shape[0]).to(device)
+                for i in range(bbox.shape[0]):
+                    loss[i] = torch.where(label[i] == 0, distance[i], eta * ((distance[i] + 1e-6) ** (-1.0)))
+                #loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
+                loss = torch.mean(loss)
+            
                 epoch_loss += loss.item()
                 n_batch += bbox.shape[0]
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD :: {epoch+1}/{train_epoch} :: Validation Time :: {epoch_time:.3f}s '
-                    f'loss :: {epoch_loss / n_batch:.6f}')
+                    f'loss :: {epoch_loss / n_batch:.6f} :: TT {tt}, TF {tf}, FF {ff}, FT {ft}')
         
         ######################################################################
         if CALLBACK:
@@ -260,7 +279,7 @@ def SADTrain(other_model, net_name):
     return other_model
 
             
-def EGOTrain(ego_model, net_name):
+def EGOTrain(ego_model, net_name, CALLBACK):
     logger = logging.getLogger()
     logger.info(f'SAD_EGO Train Start ::\t{net_name}')
     device = 'cuda'

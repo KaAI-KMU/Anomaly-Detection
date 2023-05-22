@@ -2,14 +2,26 @@ import torch
 import logging
 import random
 import os
-from config.main_config import *
-from config.train_config import *
+from config.main_config import RESULT_PATH, pretrain_weight_path
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from datetime import datetime
 from utils.load_model import Load_model
 from utils.trainer import AETrain, SADTrain, EGOTrain
 from utils.init_model import init_weight
 
-def main():
+pretrain_optimzier = 'Adam'
+pretrain_lr = 0.001
+pretrain_weight_decay = 1e-6
+pretrain_milestone = [50]
+pretrain_gamma = 0.1
+pretrain_criterion = 'MSE'
+
+pretrain_epoch = 100
+
+# SAD Train Section
+
+
+def main(network_name, CALLBACK):
     
     net_name = network_name
     start = datetime.now()

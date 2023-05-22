@@ -1,7 +1,7 @@
 import torch
 from model.network_builder import network_builder
 import logging
-from config.train_config import *
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from config.main_config import device, network_name
 from utils.load_train_argument import load_pretrain_optimizer, load_pretrain_multistep_lr, load_criterion, load_train_optimizer, load_train_multistep_lr
 from utils.load_dataset import dataset_loader
@@ -11,8 +11,8 @@ from tqdm import tqdm
 import copy
 import os
 
-def AETrain(net_name, result_path):
-    bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
+def AETrain(net_name, result_path, CALLBACK, feature):
+    bbox_model, flow_model, ego_model = network_builder(net_name, feature, ego_only = False)
     logger = logging.getLogger()
     logger.info(f'Pretrain Start\t::\t{net_name}')
 
@@ -161,7 +161,7 @@ def AETrain(net_name, result_path):
     ego_model.to('cpu')
     return bbox_model, flow_model, ego_model, copy.deepcopy(ego_model)
 
-def SADTrain(other_model, net_name):
+def SADTrain(other_model, net_name, CALLBACK):
     """
     1. 모델 gpu 이동
     2. 데이터 로더 불러오기 -> for_train 필요
@@ -184,19 +184,20 @@ def SADTrain(other_model, net_name):
     start_time = time.time()
     
 
-    train_generator, validation_generator = dataset_loader(net_name=net_name, state = 'SAD')
+    train_normal, train_abnormal, val_normal, val_abnormal = dataset_loader(net_name=net_name, state = 'SAD')
 
     center = other_model.c
 
-    length = len(train_generator)
-    length_val = len(validation_generator)
+    length = len(train_abnormal)
+    length_val = len(val_abnormal)
     logger.info(f'SAD Training Data Length\t::\t{length}')
     logger.info(f'SAD Validation Data Length\t::\t{length_val}')
     logger.info(f'SAD Training Epoch :: {train_epoch}')
     for epoch in range(train_epoch):
         other_model.train()
 
-        loader = tqdm(train_generator, total = length)
+        loader = tqdm(train_abnormal, total = length)
+        normal_loader = iter(train_normal)
 
         epoch_loss = 0.0
         n_batch = 0
@@ -204,6 +205,13 @@ def SADTrain(other_model, net_name):
 
         for data in loader:
             bbox, flow, ego, _, label, _ = data
+            bbox_ab, flow_ab, ego_ab, _, label_ab, _ = next(normal_loader)
+
+            bbox = torch.cat((bbox, bbox_ab), dim = 0)
+            flow = torch.cat((flow, flow_ab), dim = 0)
+            ego = torch.cat((ego, ego_ab), dim = 0)
+            label = torch.cat((label, label_ab), dim = 0)
+
             label = torch.unsqueeze(label, axis = -1)
             label = label.to(device)
 
@@ -211,7 +219,10 @@ def SADTrain(other_model, net_name):
             result = other_model(bbox, flow, ego)
             distance = torch.sum((result.squeeze() - center) ** 2, dim = 1) # l1 loss
 
-            loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
+            loss = torch.zeros(bbox.shape[0]).to(device)
+            for i in range(bbox.shape[0]):
+                loss[i] = torch.where(label[i] == 0, distance[i], eta * ((distance[i] + 1e-6) ** (-1.0)))
+            #loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
             loss = torch.mean(loss)
             loss.backward()
             optimizer_SAD.step()
@@ -223,7 +234,10 @@ def SADTrain(other_model, net_name):
         logger.info(f'Train SAD :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
         
-        loader_val = tqdm(validation_generator, total = length_val)
+        loader_val = tqdm(val_abnormal, total = length_val)
+        normal_val_loader = iter(val_normal)
+
+        tt, tf, ff, ft = 0,0,0,0
 
         other_model.eval()
         epoch_loss = 0.0
@@ -232,19 +246,39 @@ def SADTrain(other_model, net_name):
         with torch.no_grad():
             for data in loader_val:
                 bbox, flow, ego, _, label, _ = data
+                bbox_ab, flow_ab, ego_ab, _, label_ab, _ = next(normal_val_loader)
+
+                bbox = torch.cat((bbox, bbox_ab), dim = 0)
+                flow = torch.cat((flow, flow_ab), dim = 0)
+                ego = torch.cat((ego, ego_ab), dim = 0)
+                label = torch.cat((label, label_ab), dim = 0)
+                
                 label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
                 result = other_model(bbox, flow, ego)
                 distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
 
-                loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
-                loss = torch.mean(loss)
+                for i in range(bbox.shape[0]):
+                    if label[i] == 0 and distance[i] < 1:
+                        tt += 1
+                    elif label[i] == 0 and distance[i] >= 1:
+                        tf += 1
+                    elif label[i] == 1 and distance[i] >= 1:
+                        ff += 1
+                    elif label[i] == 1 and distance[i] < 1:
+                        ft += 1
 
+                loss = torch.zeros(bbox.shape[0]).to(device)
+                for i in range(bbox.shape[0]):
+                    loss[i] = torch.where(label[i] == 0, distance[i], eta * ((distance[i] + 1e-6) ** (-1.0)))
+                #loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
+                loss = torch.mean(loss)
+            
                 epoch_loss += loss.item()
                 n_batch += bbox.shape[0]
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD :: {epoch+1}/{train_epoch} :: Validation Time :: {epoch_time:.3f}s '
-                    f'loss :: {epoch_loss / n_batch:.6f}')
+                    f'loss :: {epoch_loss / n_batch:.6f} :: TT {tt}, TF {tf}, FF {ff}, FT {ft}')
         
         ######################################################################
         if CALLBACK:
@@ -260,7 +294,7 @@ def SADTrain(other_model, net_name):
     return other_model
 
             
-def EGOTrain(ego_model, net_name):
+def EGOTrain(ego_model, net_name, CALLBACK):
     logger = logging.getLogger()
     logger.info(f'SAD_EGO Train Start ::\t{net_name}')
     device = 'cuda'
@@ -274,20 +308,22 @@ def EGOTrain(ego_model, net_name):
         callback_SAD = best_weight_callback(name = 'Ego', center = True)
     
     start_time = time.time()
-    
 
-    train_generator, validation_generator = dataset_loader(net_name=net_name, state = 'SAD_EGO')
+    train_normal, train_abnormal, val_normal, val_abnormal = dataset_loader(net_name=net_name, state = 'SAD_EGO')
 
     center = ego_model.c
-    length = len(train_generator)
-    length_val = len(validation_generator)
+    length = len(train_abnormal)
+    length_val = len(val_abnormal)
     logger.info(f'SAD_EGO Training Data Length :: {length}')
     logger.info(f'SAD_EGO Validation Data Length :: {length_val}')
     logger.info(f'SAD_EGO Training Epoch :: {train_epoch}')
     for epoch in range(train_epoch):
         ego_model.train()
 
-        loader = tqdm(train_generator, total = length)
+        loader = tqdm(train_abnormal, total = length)
+        normal_loader = iter(train_normal)
+        
+        
         
         epoch_loss = 0.0
         n_batch = 0
@@ -295,6 +331,11 @@ def EGOTrain(ego_model, net_name):
 
         for data in loader:
             ego, _, label = data # data, frame_id, label
+            ego_ab, _, label_ab = next(normal_loader)
+
+            ego = torch.cat((ego, ego_ab), dim = 0)
+            label = torch.cat((label, label_ab), dim=0)
+
             label = torch.unsqueeze(label, axis = -1)
             label = label.to(device)
 
@@ -313,7 +354,10 @@ def EGOTrain(ego_model, net_name):
         logger.info(f'Train SAD_EGO :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
                     f'loss :: {epoch_loss / n_batch:.6f}')
         
-        loader_val = tqdm(validation_generator, total = length_val)
+        loader_val = tqdm(val_abnormal, total = length_val)
+        normal_val_loader = iter(val_normal)
+
+        tt, tf, ff, ft = 0,0,0,0
 
         ego_model.eval()
 
@@ -324,10 +368,27 @@ def EGOTrain(ego_model, net_name):
         with torch.no_grad():
             for data in loader_val:
                 ego, _, label = data
+                ego_ab, _, label_ab = next(normal_val_loader)
+
+                ego = torch.cat((ego, ego_ab), dim = 0)
+                label = torch.cat((label, label_ab), dim = 0)
+
                 label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
                 result = ego_model(ego)
                 distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
+                
+                for i in range(ego.shape[0]):
+                    if label[i] == 0 and distance[i] < 1:
+                        tt += 1
+                    elif label[i] == 0 and distance[i] >= 1:
+                        tf += 1
+                    elif label[i] == 1 and distance[i] >= 1:
+                        ff += 1
+                    elif label[i] == 1 and distance[i] < 1:
+                        ft += 1
+                
+                
                 loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
                 loss = torch.mean(loss)
                 epoch_loss += loss.item()
@@ -335,7 +396,8 @@ def EGOTrain(ego_model, net_name):
                 
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD_EGO :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
-                    f'loss :: {epoch_loss / n_batch:.6f}')
+                    f'loss :: {epoch_loss / n_batch:.6f} :: TT {tt}, TF {tf}, FF {ff}, FT {ft}')
+        
         if CALLBACK:
             callback_SAD.add(ego_model, epoch_loss / n_batch)
 

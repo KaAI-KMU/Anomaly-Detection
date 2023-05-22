@@ -6,7 +6,7 @@ pretrain_milestone = [50]
 pretrain_gamma = 0.1
 pretrain_criterion = 'MSE'
 
-pretrain_epoch = 100
+pretrain_epoch = 2
 
 # SAD Train Section
 train_optimizer = 'Adam'
@@ -15,7 +15,7 @@ train_weight_decay = 1e-6
 train_milestone = [50]
 train_gamma = 0.1
 
-train_epoch = 100
+train_epoch = 2
 eta = 1.0
 
 CALLBACK = True

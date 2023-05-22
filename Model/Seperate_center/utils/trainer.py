@@ -1,7 +1,7 @@
 import torch
 from model.network_builder import network_builder
 import logging
-from config.train_config import *
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from config.main_config import device, network_name
 from utils.load_train_argument import load_pretrain_optimizer, load_pretrain_multistep_lr, load_criterion, load_train_optimizer, load_train_multistep_lr
 from utils.load_dataset import dataset_loader
@@ -11,8 +11,8 @@ from tqdm import tqdm
 import copy
 import os
 
-def AETrain(net_name, result_path):
-    bbox_model, flow_model, ego_model = network_builder(net_name, ego_only = False)
+def AETrain(net_name, result_path, CALLBACK, feature):
+    bbox_model, flow_model, ego_model = network_builder(net_name, feature, ego_only = False)
     logger = logging.getLogger()
     logger.info(f'Pretrain Start\t::\t{net_name}')
 
@@ -161,7 +161,7 @@ def AETrain(net_name, result_path):
     ego_model.to('cpu')
     return bbox_model, flow_model, ego_model, copy.deepcopy(ego_model)
 
-def SADTrain(other_model, net_name):
+def SADTrain(flow_model, bbox_model, ego_model, net_name, CALLBACK):
     """
     1. 모델 gpu 이동
     2. 데이터 로더 불러오기 -> for_train 필요
@@ -174,19 +174,31 @@ def SADTrain(other_model, net_name):
     device = 'cuda'
     if not torch.cuda.is_available():
         device = 'cpu'
-    other_model.to(device)
 
-    optimizer_SAD = load_train_optimizer(other_model.parameters())
-    schedular_SAD = load_train_multistep_lr(optimizer_SAD)
+    flow_model.to(device)
+    bbox_model.to(device)
+    ego_model.to(device)
+
+    optimizer_flow = load_train_optimizer(flow_model.parameters())
+    optimizer_bbox = load_train_optimizer(bbox_model.parameters())
+    optimizer_ego = load_train_optimizer(ego_model.parameters())
+    
+    schedular_flow = load_train_multistep_lr(optimizer_flow)
+    schedular_bbox = load_train_multistep_lr(optimizer_bbox)
+    schedular_ego = load_train_multistep_lr(optimizer_ego)
+
     if CALLBACK:
-        callback_SAD = best_weight_callback(name = 'Other', center = True)
+        callback_flow = best_weight_callback(name = 'Flow', center = True)
+        callback_bbox = best_weight_callback(name = 'BBox', center = True)
+        callback_ego = best_weight_callback(name = 'Ego', center = True)
     
     start_time = time.time()
-    
-
     train_generator, validation_generator = dataset_loader(net_name=net_name, state = 'SAD')
 
-    center = other_model.c
+    bbox_c = bbox_model.c
+    flow_c = flow_model.c
+    ego_c = ego_model.c
+    
 
     length = len(train_generator)
     length_val = len(validation_generator)
@@ -194,11 +206,16 @@ def SADTrain(other_model, net_name):
     logger.info(f'SAD Validation Data Length\t::\t{length_val}')
     logger.info(f'SAD Training Epoch :: {train_epoch}')
     for epoch in range(train_epoch):
-        other_model.train()
+        flow_model.train()
+        bbox_model.train()
+        ego_model.train()
 
         loader = tqdm(train_generator, total = length)
 
-        epoch_loss = 0.0
+        epoch_bbox_loss = 0.0
+        epoch_flow_loss = 0.0
+        epoch_ego_loss = 0.0
+        
         n_batch = 0
         epoch_time = time.time()
 
@@ -207,26 +224,65 @@ def SADTrain(other_model, net_name):
             label = torch.unsqueeze(label, axis = -1)
             label = label.to(device)
 
-            optimizer_SAD.zero_grad()
-            result = other_model(bbox, flow, ego)
-            distance = torch.sum((result.squeeze() - center) ** 2, dim = 1) # l1 loss
+            optimizer_flow.zero_grad()
+            optimizer_bbox.zero_grad()
+            optimizer_ego.zero_grad()
 
-            loss = torch.where(label == 0, distance, eta * ((distance + 1e-6) ** (-1.0)))
-            loss = torch.mean(loss)
-            loss.backward()
-            optimizer_SAD.step()
+            result_bbox = bbox_model(bbox)
+            result_flow = flow_model(flow)
+            result_ego = ego_model(ego)
 
-            epoch_loss += loss.item()
+
+
+            distance_bbox = torch.sum((result_bbox.squeeze() - bbox_c) ** 2, dim = 1) # l1 loss
+            distance_flow = torch.sum((result_flow.squeeze() - flow_c) ** 2, dim = 1) # l1 loss
+            distance_ego = torch.sum((result_ego.squeeze() - ego_c) ** 2, dim = 1) # l1 loss
+
+
+            loss_bbox = torch.zeros(bbox.shape[0]).to(device)
+            loss_flow = torch.zeros(bbox.shape[0]).to(device)
+            loss_ego = torch.zeros(bbox.shape[0]).to(device)
+
+            for i in range(bbox.shape[0]):
+                loss_bbox[i] = torch.where(label[i] == 0, distance_bbox[i], eta * ((distance_bbox[i] + 1e-6) ** (-1.0)))
+                loss_flow[i] = torch.where(label[i] == 0, distance_flow[i], eta * ((distance_flow[i] + 1e-6) ** (-1.0)))
+                loss_ego[i] = torch.where(label[i] == 0, distance_ego[i], eta * ((distance_ego[i] + 1e-6) ** (-1.0)))
+
+            loss_bbox = torch.mean(loss_bbox)
+            loss_flow = torch.mean(loss_flow)
+            loss_ego = torch.mean(loss_ego)
+
+            loss_bbox.backward()
+            loss_flow.backward()
+            loss_ego.backward()
+
+            optimizer_flow.step()
+            optimizer_bbox.step()
+            optimizer_ego.step()
+
             n_batch += bbox.shape[0]
-        schedular_SAD.step()
+            epoch_bbox_loss += loss_bbox.item()
+            epoch_flow_loss += loss_flow.item()
+            epoch_ego_loss += loss_ego.item()
+
+        schedular_flow.step()
+        schedular_bbox.step()
+        schedular_ego.step()
+
         epoch_time = time.time() - epoch_time
         logger.info(f'Train SAD :: {epoch+1}/{train_epoch} :: Train Time :: {epoch_time:.3f}s '
-                    f'loss :: {epoch_loss / n_batch:.6f}')
+                    f'BBox :: {epoch_bbox_loss / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
         
         loader_val = tqdm(validation_generator, total = length_val)
 
-        other_model.eval()
-        epoch_loss = 0.0
+        flow_model.eval()
+        bbox_model.eval()
+        ego_model.eval()
+
+        epoch_bbox_loss = 0.0
+        epoch_flow_loss = 0.0
+        epoch_ego_loss = 0.0
+
         n_batch = 0
         epoch_time = time.time()
         with torch.no_grad():
@@ -234,33 +290,55 @@ def SADTrain(other_model, net_name):
                 bbox, flow, ego, _, label, _ = data
                 label = torch.unsqueeze(label, axis = -1)
                 label = label.to(device)
-                result = other_model(bbox, flow, ego)
-                distance = torch.sum((result.squeeze() - center) ** 2, dim = 1).squeeze()
 
-                loss = torch.where(label == 1, distance, eta * ((distance + 1e-6) ** label.float()))
-                loss = torch.mean(loss)
+                result_bbox = bbox_model(bbox)
+                result_flow = flow_model(flow)
+                result_ego = ego_model(ego)
 
-                epoch_loss += loss.item()
+                distance_bbox = torch.sum((result_bbox.squeeze() - bbox_c) ** 2, dim = 1) # l1 loss
+                distance_flow = torch.sum((result_flow.squeeze() - flow_c) ** 2, dim = 1) # l1 loss
+                distance_ego = torch.sum((result_ego.squeeze() - ego_c) ** 2, dim = 1) # l1 loss
+
+                loss_bbox = torch.where(label == 0, distance_bbox, eta * ((distance_bbox + 1e-6) ** (-1.0)))
+                loss_ego = torch.where(label == 0, distance_ego, eta * ((distance_ego + 1e-6) ** (-1.0)))
+                loss_flow = torch.where(label == 0, distance_flow, eta * ((distance_flow + 1e-6) ** (-1.0)))
+
+                loss_bbox = torch.where(label == 0, distance_bbox, eta * ((distance_bbox + 1e-6) ** (-1.0)))
+                loss_ego = torch.where(label == 0, distance_ego, eta * ((distance_ego + 1e-6) ** (-1.0)))
+                loss_flow = torch.where(label == 0, distance_flow, eta * ((distance_flow + 1e-6) ** (-1.0)))
+
+                loss_bbox = torch.mean(loss_bbox)
+                loss_flow = torch.mean(loss_flow)
+                loss_ego = torch.mean(loss_ego)
+
+                epoch_bbox_loss += loss_bbox.item()
+                epoch_flow_loss += loss_flow.item()
+                epoch_ego_loss += loss_ego.item()
+                
                 n_batch += bbox.shape[0]
         epoch_time = time.time() - epoch_time
         logger.info(f'Validation SAD :: {epoch+1}/{train_epoch} :: Validation Time :: {epoch_time:.3f}s '
-                    f'loss :: {epoch_loss / n_batch:.6f}')
+                    f'BBox :: {epoch_bbox_loss / n_batch:.6f} Flow :: {epoch_flow_loss / n_batch:.6f}, Ego :: {epoch_ego_loss / n_batch:.6f}')
         
         ######################################################################
         if CALLBACK:
-            callback_SAD.add(other_model, epoch_loss / n_batch)
+            callback_bbox.add(bbox_model, epoch_bbox_loss / n_batch)
+            callback_flow.add(flow_model, epoch_flow_loss / n_batch)
+            callback_ego.add(ego_model, epoch_ego_loss / n_batch)
 
 
     start_time = time.time() - start_time
     logger.info(f'SAD Training Time :: {start_time:.3f}s')
     logger.info('SAD Training Finish')
     if CALLBACK:
-        other_model = callback_SAD.get_best_model(other_model)
+        bbox_model = callback_bbox.get_best_model(bbox_model)
+        flow_model = callback_flow.get_best_model(flow_model)
+        ego_model = callback_ego.get_best_model(ego_model)
 
-    return other_model
+    return bbox_model, flow_model, ego_model
 
             
-def EGOTrain(ego_model, net_name):
+def EGOTrain(ego_model, net_name, CALLBACK):
     logger = logging.getLogger()
     logger.info(f'SAD_EGO Train Start ::\t{net_name}')
     device = 'cuda'

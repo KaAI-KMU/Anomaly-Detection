@@ -2,14 +2,17 @@ import torch
 import logging
 import random
 import os
-from config.main_config import *
-from config.train_config import *
+from config.main_config import RESULT_PATH, pretrain_weight_path
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from datetime import datetime
 from utils.load_model import Load_model
 from utils.trainer import AETrain, SADTrain, EGOTrain
 from utils.init_model import init_weight
 
-def main():
+# SAD Train Section
+
+
+def main(network_name, CALLBACK, feature):
     
     net_name = network_name
     start = datetime.now()
@@ -36,6 +39,7 @@ def main():
     logger.info(f'Pretrain gamma :: {pretrain_gamma}')
     logger.info(f'Pretrain criterion :: {pretrain_criterion}')
     logger.info(f'Pretrain epoch :: {pretrain_epoch}')
+    logger.info(f'Extract Feature :: {feature}')
 
     logger.info(f'Train optimizer :: {train_optimizer}')
     logger.info(f'Train learning rate :: {train_lr}')
@@ -52,13 +56,13 @@ def main():
         flow_model, bbox_model, ego_model, ego_model_ego_train = Load_model(pretrain_weight_path, net_name)
     else:
         # AE 모델을 생성하고 학습을 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(net_name, result_path)
-        other_model, ego_model = init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name)
+        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(net_name, result_path, CALLBACK, feature)
+        other_model, ego_model = init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name, feature)
     
     net_name = f'{net_name}_SAD'
 
-    other_model = SADTrain(other_model, net_name)
-    ego_model = EGOTrain(ego_model, net_name)
+    other_model = SADTrain(other_model, net_name, CALLBACK)
+    ego_model = EGOTrain(ego_model, net_name, CALLBACK)
 
     # 저장하기
     torch.save(other_model, f'{result_path}other_model.pt')
@@ -67,4 +71,17 @@ def main():
 
     
 if __name__ == '__main__':
-    main()
+    model_name = [
+                'Recurrence_1',
+                'Recurrence_1',
+                'Recurrence_1',
+                'Recurrence_1', 
+                'Recurrence_2', 
+                'Recurrence_2', 
+                'Recurrence_2', 
+                'Recurrence_2']
+    callback = [True, True, False, False, True, True, False, False]
+    feature = [512, 256, 512, 256, 512, 256, 512, 256,]
+
+    for i in range(len(model_name)):
+        main(model_name[i], callback[i], feature[i])

@@ -2,14 +2,18 @@ import torch
 import logging
 import random
 import os
-from config.main_config import *
-from config.train_config import *
+from config.main_config import RESULT_PATH, pretrain_weight_path
+from config.train_config import pretrain_optimzier, pretrain_lr, pretrain_weight_decay, pretrain_milestone, pretrain_gamma, pretrain_criterion, pretrain_epoch, train_optimizer, train_lr, train_weight_decay, train_milestone, train_gamma, train_epoch, eta
 from datetime import datetime
 from utils.load_model import Load_model
 from utils.trainer import AETrain, SADTrain, EGOTrain
 from utils.init_model import init_weight
 
-def main():
+# SAD Train Section
+
+
+def main(network_name, CALLBACK, folder_name):
+    
     
     net_name = network_name
     start = datetime.now()
@@ -46,19 +50,21 @@ def main():
     logger.info(f'Eta :: {eta}')
     logger.info(f'Callback :: {CALLBACK}')
     
-    # 모델들은 CPU에 위치
-    if pretrain_weight_path:
-        # 모델을 생성하고 가중치를 업로드 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = Load_model(pretrain_weight_path, net_name)
-    else:
-        # AE 모델을 생성하고 학습을 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(net_name, result_path)
-        other_model, ego_model = init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name)
     
-    net_name = f'{net_name}_SAD'
+    net_name = f'{net_name}'
 
-    other_model = SADTrain(other_model, net_name)
-    ego_model = EGOTrain(ego_model, net_name)
+    bbox = torch.load(f'RESULT/{folder_name}/pretrain/bbox.pt')
+    flow = torch.load(f'RESULT/{folder_name}/pretrain/flow.pt')
+    ego = torch.load(f'RESULT/{folder_name}/pretrain/ego.pt')
+    try:
+        feature = next(bbox.bbox_decoder[1].parameters()).size()[1]
+    except:
+        feature = next(bbox.bbox_decoder[0].parameters()).size()[1]
+
+    other_model, ego_model = init_weight(flow, bbox, ego, ego, net_name, feature)
+
+    other_model = SADTrain(other_model, net_name, CALLBACK)
+    ego_model = EGOTrain(ego_model, net_name, CALLBACK)
 
     # 저장하기
     torch.save(other_model, f'{result_path}other_model.pt')
@@ -67,4 +73,19 @@ def main():
 
     
 if __name__ == '__main__':
-    main()
+    model_name = ['Recurrence_1', 'Recurrence_1', 'Recurrence_1', 'Recurrence_1', 'Recurrence_2', 'Recurrence_2', 'Recurrence_2', 'Recurrence_2']
+    callback = [True, True, False, False, True, True, False, False]
+    folder_names = ['2023_04_10_10_11_58', 
+                    '2023_04_16_13_20_43', 
+                    '2023_04_15_05_51_25', 
+                    '2023_04_16_17_13_12', 
+                    '2023_04_16_07_08_51', 
+                    '2023_04_16_21_07_37', 
+                    '2023_04_15_10_52_29', 
+                    '2023_04_17_02_44_46']
+
+    if len(model_name) == len(callback) and len(callback) == len(folder_names):
+        for i in range(len(model_name)):
+            main(model_name[i], callback[i], folder_names[i])
+    else:
+        print('Fail')

@@ -46,19 +46,21 @@ def main():
     logger.info(f'Eta :: {eta}')
     logger.info(f'Callback :: {CALLBACK}')
     
-    # 모델들은 CPU에 위치
-    if pretrain_weight_path:
-        # 모델을 생성하고 가중치를 업로드 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = Load_model(pretrain_weight_path, net_name)
-    else:
-        # AE 모델을 생성하고 학습을 한 뒤 모델을 반환
-        flow_model, bbox_model, ego_model, ego_model_ego_train = AETrain(net_name, result_path)
-        other_model, ego_model = init_weight(flow_model, bbox_model, ego_model, ego_model_ego_train, net_name)
     
-    net_name = f'{net_name}_SAD'
+    net_name = f'{net_name}'
 
-    other_model = SADTrain(other_model, net_name)
-    ego_model = EGOTrain(ego_model, net_name)
+    folder_name = '2023_04_17_02_44_46'
+
+    bbox = torch.load(f'RESULT/{folder_name}/pretrain/bbox.pt')
+    flow = torch.load(f'RESULT/{folder_name}/pretrain/flow.pt')
+    ego = torch.load(f'RESULT/{folder_name}/pretrain/ego.pt')
+
+    feature = next(bbox.bbox_decoder[1].parameters()).size()[1]
+
+    other_model, ego_model = init_weight(flow, bbox, ego, ego, net_name, feature)
+
+    other_model = SADTrain(other_model, net_name, CALLBACK)
+    ego_model = EGOTrain(ego_model, net_name, CALLBACK)
 
     # 저장하기
     torch.save(other_model, f'{result_path}other_model.pt')

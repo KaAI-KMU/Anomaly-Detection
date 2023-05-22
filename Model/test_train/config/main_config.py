@@ -1,4 +1,4 @@
-RESULT_PATH = '/workspace/Anomaly-Detection/Model/New_train/RESULT/'
+RESULT_PATH = '/workspace/Anomaly-Detection/Model/test_train/RESULT/'
 network_name = 'Recurrence_2'
 pretrain_weight_path = None
 device= 'cuda'
